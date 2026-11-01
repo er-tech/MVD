@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,8 +30,13 @@ var ErrNotBundled = errors.New("this build of MVD has no music-fixer for this sy
 // It returns ErrNotBundled when this build has no zip for this system. It returns another error
 // when the zip is damaged, holds a file outside its folder, has no program, or cannot be written.
 func Install(dataDir string) (string, error) {
+	return installFrom(bundled, dataDir)
+}
+
+// installFrom is Install reading the bundle from bundle, so a test can hand it any contents.
+func installFrom(bundle fs.FS, dataDir string) (string, error) {
 	zipName := fmt.Sprintf("bundle/music-fixer-%s-%s.zip", runtime.GOOS, runtime.GOARCH)
-	data, err := bundled.ReadFile(zipName)
+	data, err := fs.ReadFile(bundle, zipName)
 	if err != nil {
 		return "", ErrNotBundled
 	}

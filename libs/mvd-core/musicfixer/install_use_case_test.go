@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"testing/fstest"
 )
 
 func makeZip(t *testing.T, files map[string]string) []byte {
@@ -59,7 +60,7 @@ func TestUnpackRefusesAFileOutsideItsFolder(t *testing.T) {
 }
 
 func TestInstallWithoutABundleSaysSo(t *testing.T) {
-	if _, err := Install(t.TempDir()); err != ErrNotBundled {
+	if _, err := installFrom(fstest.MapFS{}, t.TempDir()); err != ErrNotBundled {
 		t.Errorf("err: %v", err)
 	}
 }
