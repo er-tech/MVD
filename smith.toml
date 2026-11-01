@@ -33,8 +33,9 @@ language = "go"
 kind = "app"
 
 [projects.mvd.release]
-asset_name = "go-app-{product}-{os}-{arch}.{ext}"
-product = "mvd"
+build = "node tools/release-build.cjs"
+assets = ["dist/drop/mvd_*.zip", "dist/drop/mvd_*.dmg"]
+platforms = ["windows-x64", "macos-arm64", "linux-x64"]
 
 [projects.mvd.tasks.build]
 depends_on = ["stage-web"]
@@ -101,8 +102,9 @@ language = "go"
 kind = "app"
 
 [projects.mvd-tui.release]
-asset_name = "go-app-{product}-{os}-{arch}.{ext}"
+asset_name = "{product}_{version}_{os}_{arch}.{ext}"
 product = "mvd-tui"
+os_alias = { darwin = "macos" }
 
 [projects.mvd-tui.tasks.start]
 command = ["go", "run", "."]
