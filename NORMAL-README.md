@@ -18,6 +18,10 @@ A lightweight, zero-setup, concurrent Go application with two front ends, a desk
 * **Automatic browser cookies**: Finds a browser you're signed into YouTube with and uses its cookies to clear bot checks and `429` errors, with no configuration.
 * **Spotify and Apple Music playlists**: Paste a public playlist link; the app reads its songs without any login and finds each one on YouTube, the official video first (see below).
 * **Song lists from anywhere**: A text file of `Artist - Title` lines, or a CSV with title and artist columns, is handled like a playlist (see below).
+* **Best audio on the video** (next release, Windows only): After an official video is downloaded, the best audio of the song is fetched and the video is recreated with it, lined up with the picture (see below).
+* **Premium audio**: Sign in to YouTube in MVD's own window (Windows), or let it use the browser whose login is Premium, to get 256 kbps audio.
+* **Window styles**: Preferences > Look gives the app the look of Windows 95, XP, Vista, classic Mac or Aqua.
+* **Updates**: Looks once a day for a newer MVD (Help > Check for updates) and keeps yt-dlp and ffmpeg current.
 * **Your colours**: The interface colours are configurable, in the app or in `config.conf`.
 * **Auto-retry**: Retries one-off failures at once and rate-limited ones in a sweep after the backlog finishes; never retries permanently gone videos.
 * **Full Screen Interface**: A fixed terminal UI shows every playlist and entry with its state, live progress of the running downloads, global counters (queue, running, done, official, duplicates, failed) and the yt-dlp output of whatever you select. Failed entries can be retried from the screen. Pipes and CI get a plain log instead. While files are coming in, the header also shows the speed of all of them together and how many files and how many parts of them (the fragments of a stream, up to `concurrent_fragments`) are being fetched at once.
@@ -207,6 +211,10 @@ When all you have is the artist and the title of each song, give the app a list.
 - A line or row that cannot be read is skipped (the screen counts them); a file with no song at all fails with a message that says how to write one.
 
 Each song is then found on YouTube exactly as the songs of a Spotify playlist are: the official video first, the best other upload when there is none, and a song with no match fails alone.
+
+### Best audio on the video (next release)
+
+Windows only. Set `better_audio=yes` in `config.conf`, or choose *Best Audio On The Video* in the preferences. For every official video MVD downloads, it then fetches the best audio of the same song, and the music-fixer app (made with [Metil](https://github.com/er-tech/Metil), embedded in the release build) recreates the video with that sound, lined up with the picture. The new video replaces the downloaded one only when every step worked; otherwise the downloaded video stays as it is. It adds time to every song and needs ffmpeg, which MVD installs. It is off by default.
 
 ### Official music video mode
 
