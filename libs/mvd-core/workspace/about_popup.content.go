@@ -1,7 +1,7 @@
 package workspace
 
 // projectURL is the page of the project on GitHub, which the About window links to.
-const projectURL = "https://github.com/russoedu/MVD"
+const projectURL = "https://github.com/er-tech/MVD"
 
 // aboutParagraphs is what the About window says, the same words as the About window of the
 // page around the terminal.
