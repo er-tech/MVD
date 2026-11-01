@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { sampleWorkspace } from '../theme-preview/sample-workspace.content'
+import { sampleWorkspace } from '../theme-preview'
 import { AppWindow } from './app-window.component'
 import { PreferencesApp } from './preferences-app.component'
 

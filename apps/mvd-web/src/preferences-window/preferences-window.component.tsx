@@ -86,7 +86,7 @@ export function PreferencesWindow ({ theme, scheme, prefs, onIntent, ownWindow =
                 key={button.id}
                 className='classic-button'
                 data-role={button.role}
-                onPress={() => onIntent(button.id === 'save' ? { kind: 'prefs-save' } : { kind: 'prefs-close' })}
+                onPress={() => onIntent({ kind: button.id === 'save' ? 'prefs-save' : 'prefs-close' })}
               >
                 {button.label}
               </Button>

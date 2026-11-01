@@ -84,7 +84,7 @@ func TestClickingAHeadingOpensItsBoxAndAnEntryChoosesIt(t *testing.T) {
 		t.Fatalf("open = %d", m.Open())
 	}
 	view := ansi.Strip(m.View())
-	for _, want := range []string{"New", "Ctrl+N", "Open…", "Quit", "╭", "╰"} {
+	for _, want := range []string{"New", ShortcutLabel("Ctrl+N"), "Open…", "Quit", "╭", "╰"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("box lacks %q:\n%s", want, view)
 		}

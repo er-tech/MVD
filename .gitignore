@@ -92,3 +92,6 @@ test-output
 
 # music-fixer builds from VideoCraw (private); put here by the release build only
 /libs/mvd-core/musicfixer/bundle/*.zip
+
+# smith
+.smith/

@@ -13,6 +13,6 @@ export function isWebAddress (address: string): boolean {
 }
 
 /** The question xterm asks before it follows a link; the app answers it itself. */
-export function isLinkQuestion (message: string | undefined): boolean {
-  return (message ?? '').startsWith('Do you want to navigate to ')
+export function isLinkQuestion (message = ''): boolean {
+  return message.startsWith('Do you want to navigate to ')
 }

@@ -30,7 +30,7 @@ export function useOpenLinksInBrowser (): void {
     const originalConfirm = globalThis.confirm.bind(globalThis)
     const originalOpen = globalThis.open.bind(globalThis)
 
-    replace('confirm', (message?: string): boolean => (isLinkQuestion(message) ? true : originalConfirm(message)))
+    replace('confirm', (message?: string): boolean => (isLinkQuestion(message) || originalConfirm(message)))
 
     replace('open', (url?: string | URL): unknown => {
       // xterm opens a blank window and then sets the address of it.

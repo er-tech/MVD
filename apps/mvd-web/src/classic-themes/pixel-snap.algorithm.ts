@@ -4,7 +4,5 @@
  * 133 % so a pixel is two. A screen already scaled by a whole number needs none.
  */
 export function pixelSnapZoom (devicePixelRatio: number): number {
-  if (Number.isNaN(devicePixelRatio) || devicePixelRatio <= 0) return 1
-
-  return Math.max(1, Math.round(devicePixelRatio)) / devicePixelRatio
+  return Number.isNaN(devicePixelRatio) || devicePixelRatio <= 0 ? 1 : Math.max(1, Math.round(devicePixelRatio)) / devicePixelRatio
 }

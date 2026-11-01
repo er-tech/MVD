@@ -20,9 +20,8 @@ export function cellAt (point: { x: number, y: number }, grid: CellGrid): Cell |
 
   const col = Math.floor((point.x - grid.left) / grid.cellWidth) + 1
   const row = Math.floor((point.y - grid.top) / grid.cellHeight) + 1
-  if (col < 1 || row < 1 || col > grid.cols || row > grid.rows) return null
 
-  return { col, row }
+  return col < 1 || row < 1 || col > grid.cols || row > grid.rows ? null : { col, row }
 }
 
 /**

@@ -69,7 +69,7 @@ func TestPointingAtAButtonThatCannotBeUsedSaysWhy(t *testing.T) {
 
 func TestWhileNothingRunsTheBottomLineListsTheKeysThatStartTheWork(t *testing.T) {
 	screen := screenOf(listOf("https://a"))
-	for _, want := range []string{"F1 shortcuts", "Ctrl+L add source", "Ctrl+R load playlists", "Ctrl+O open list"} {
+	for _, want := range []string{"F1 shortcuts", menubar.ShortcutLabel("Ctrl+L") + " add source", menubar.ShortcutLabel("Ctrl+R") + " load playlists", menubar.ShortcutLabel("Ctrl+O") + " open list"} {
 		if !strings.Contains(screen, want) {
 			t.Errorf("the key hints lack %q: %s", want, screen)
 		}

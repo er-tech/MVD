@@ -113,7 +113,6 @@ export function layoutOf (theme: Pick<ClassicTheme, 'id' | 'family'>): ChromeLay
 export function orderDialogButtons (buttons: readonly ButtonSnapshot[], layout: ChromeLayout): ButtonSnapshot[] {
   const byRole = (role: ButtonSnapshot['role']): ButtonSnapshot[] => buttons.filter(button => button.role === role)
   const others = byRole('other')
-  if (layout.defaultButton === 'first') return [...byRole('default'), ...others, ...byRole('cancel')]
 
-  return [...others, ...byRole('cancel'), ...byRole('default')]
+  return layout.defaultButton === 'first' ? [...byRole('default'), ...others, ...byRole('cancel')] : [...others, ...byRole('cancel'), ...byRole('default')]
 }

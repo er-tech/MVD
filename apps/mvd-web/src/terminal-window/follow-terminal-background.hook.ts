@@ -29,10 +29,12 @@ export function useFollowTerminalBackground (host: React.RefObject<HTMLElement |
       timer = undefined
       const colour = terminalBackground(element)
 
-      if (colour !== undefined && colour !== shown) {
-        shown = colour
-        element.style.setProperty(property, colour)
+      if (colour === undefined || colour === shown) {
+        return
       }
+
+      shown = colour
+      element.style.setProperty(property, colour)
     }
 
     // The terminal rewrites its rows all the time; one look after it settles is enough.

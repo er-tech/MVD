@@ -18,12 +18,12 @@ export function ProgressBar ({ progress, label }: ProgressBarProps) {
       value={unknown ? undefined : progress * 100}
       isIndeterminate={unknown}
     >
-      {({ percentage }) => (
+      {({ percentage = 0 }) => (
         <div className='classic-progress-trough'>
           <div
             className='classic-progress-fill'
             data-unknown={unknown || undefined}
-            style={{ width: unknown ? '100%' : `${percentage ?? 0}%` }}
+            style={{ width: unknown ? '100%' : `${percentage}%` }}
           />
         </div>
       )}

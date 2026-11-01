@@ -9,9 +9,8 @@ interface ActionsToolbarProps {
 /** A button's words; the mark in front (► ■ ✓ +) is drawn in a font that has it. */
 function ButtonLabel ({ label }: { label: string }) {
   const mark = /^([►■✓+]) (.*)$/.exec(label)
-  if (!mark) return <>{label}</>
 
-  return <><span className='classic-glyph'>{mark[1]}</span> {mark[2]}</>
+  return mark ? <><span className='classic-glyph'>{mark[1]}</span> {mark[2]}</> : <>{label}</>
 }
 
 /** The row of buttons under the menu bar: what can be done next. A disabled one says why when pointed at. */

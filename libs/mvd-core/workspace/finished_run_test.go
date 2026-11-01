@@ -140,7 +140,7 @@ func TestAFinishedRunSaysHowItWentAndWhereTheVideosAre(t *testing.T) {
 	m, _ := started(t)
 	m = finishRun(t, m, 3, 1)
 	screen := screenOf(m)
-	for _, want := range []string{"✓ 3 downloaded", "✗ 1 failed", "Videos in", "Ctrl+Shift+O"} {
+	for _, want := range []string{"✓ 3 downloaded", "✗ 1 failed", "Videos in", menubar.ShortcutLabel("Ctrl+Shift+O")} {
 		if !strings.Contains(screen, want) {
 			t.Errorf("the summary lacks %q:\n%s", want, screen)
 		}
