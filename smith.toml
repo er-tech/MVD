@@ -38,6 +38,7 @@ product = "mvd"
 
 [projects.mvd.tasks.build]
 depends_on = ["stage-web"]
+env = { GOFLAGS = "-tags=production,gtk3" }  # Wails 3 builds for GTK 4 on Linux unless told gtk3
 
 [projects.mvd.tasks.build-native]
 command = ["node", "-e", "const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd/'+os+'-'+arch+'/mvd'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-tags','production'+(os==='linux'?',gtk3':''),'-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd',stdio:'inherit',env:{...process.env,CGO_ENABLED:'1'}});process.exit(r.status??1)"]
@@ -79,6 +80,11 @@ depends_on = ["stage-web"]
 
 [projects.mvd.tasks.test]
 depends_on = ["stage-web"]
+env = { GOFLAGS = "-tags=production,gtk3" }  # Wails 3 builds for GTK 4 on Linux unless told gtk3
+
+[projects.mvd.tasks.package]
+depends_on = ["stage-web"]
+env = { GOFLAGS = "-tags=production,gtk3" }  # Wails 3 builds for GTK 4 on Linux unless told gtk3
 
 [projects.mvd-core]
 root = "libs/mvd-core"
