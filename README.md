@@ -97,6 +97,16 @@ A music video from YouTube often sounds worse than the song on the streaming ser
 
 ---
 
+### 🕹 Pick Your Decade
+
+Nine looks for the one window, under Preferences > Look: the MVD terminal, Windows 3.1, 95, XP and Vista, Mac OS 7.6 and 9, and Mac OS X 10.0 and 10.4.
+
+<p align="center">
+  <img src="assets/screenshots/styles/all-styles.png" alt="All nine window styles of MVD" width="720">
+</p>
+
+---
+
 <p align="center">
   <img src="assets/why.gif" alt="MVD - Music Video Downloader" width="480">
 </p>
