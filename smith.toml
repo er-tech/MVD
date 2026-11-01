@@ -34,7 +34,7 @@ kind = "app"
 
 [projects.mvd.release]
 build = "node tools/release-build.cjs"
-assets = ["dist/drop/mvd_*"]
+assets = ["dist/drop/mvd_*.zip", "dist/drop/mvd_*.dmg"]
 platforms = ["windows-x64", "macos-arm64", "linux-x64"]
 
 [projects.mvd.tasks.build]
