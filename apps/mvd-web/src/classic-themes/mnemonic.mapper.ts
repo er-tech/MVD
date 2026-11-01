@@ -11,9 +11,8 @@ export interface MnemonicParts {
 export function splitMnemonic (label: string, mnemonic?: Mnemonic): MnemonicParts | null {
   if (!mnemonic) return null
   const at = label.toLowerCase().indexOf(mnemonic.toLowerCase())
-  if (at === -1) return null
 
-  return { before: label.slice(0, at), letter: label.slice(at, at + mnemonic.length), after: label.slice(at + mnemonic.length) }
+  return at === -1 ? null : { before: label.slice(0, at), letter: label.slice(at, at + mnemonic.length), after: label.slice(at + mnemonic.length) }
 }
 
 /** The pressed key as a keyboard letter, lower case, or null when it is not a letter or a digit. */

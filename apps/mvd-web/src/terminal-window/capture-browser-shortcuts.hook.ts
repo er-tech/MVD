@@ -42,8 +42,8 @@ export function useCaptureBrowserShortcuts (enabled = true): void {
       if (!takesOverBrowserShortcut(event)) return
 
       const target = event.target instanceof Element ? event.target : null
-      if (target?.closest('.xterm')) return // the terminal already keeps the key from the browser
-      if (ownsKeyboard(target)) return
+      // The terminal already keeps the key from the browser; a field of the page keeps its own keys.
+      if (target?.closest('.xterm') || ownsKeyboard(target)) return
 
       event.preventDefault()
       const input = terminalInput()

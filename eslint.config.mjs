@@ -1,12 +1,11 @@
-// This file is YOURS. mnci writes it once and never touches it again, so
-// anything you add here survives `mnci upgrade`.
-//
-// The rules live in ./eslint.config.mnci.mjs, which mnci DOES rewrite on every
-// upgrade — so put your changes here, not there.
-import mnci from './eslint.config.mnci.mjs'
+// The rules come from @monosmith/eslint-config; the blocks below are this repository's own.
+import monosmith from '@monosmith/eslint-config'
 
 export default [
-  ...mnci(),
+  ...monosmith({
+    workspaceRoot: import.meta.dirname,
+    verticalSlices: { files: ['apps/mvd-web/src/**/*.{ts,tsx}'], roles: ['hook', 'content'] },
+  }),
   {
     // A yt-dlp metadata dump saved as UTF-16 by PowerShell: ESLint cannot parse it as JSON.
     // Delete it and this block when nothing needs the file.

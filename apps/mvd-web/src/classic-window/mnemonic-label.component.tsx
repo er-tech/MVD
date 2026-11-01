@@ -12,8 +12,9 @@ interface MnemonicLabelProps {
  */
 export function MnemonicLabel ({ label, mnemonic }: MnemonicLabelProps) {
   const parts = splitMnemonic(label, mnemonic)
-  if (!parts) return label
 
   // One span around it all, so a flex parent (a radio, a button) keeps it as one piece of text.
-  return <span>{parts.before}<span className='classic-mnemonic'>{parts.letter}</span>{parts.after}</span>
+  return parts
+    ? <span>{parts.before}<span className='classic-mnemonic'>{parts.letter}</span>{parts.after}</span>
+    : label
 }

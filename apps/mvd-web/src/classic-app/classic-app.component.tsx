@@ -25,11 +25,9 @@ const sourceEntries = new Map([['Delete', 'Remove source'], ['Move up', 'Move up
 function sourceActions (menus: MenuSnapshot[]): SourceAction[] {
   const edit = menus.find(menu => menu.label === 'Edit')?.entries ?? []
 
-  return edit.flatMap(entry => {
-    const label = sourceEntries.get(entry.label)
-
-    return label ? [{ id: entry.id, label, enabled: entry.enabled }] : []
-  })
+  return edit
+    .filter(entry => sourceEntries.has(entry.label))
+    .map(entry => ({ id: entry.id, label: sourceEntries.get(entry.label) ?? entry.label, enabled: entry.enabled }))
 }
 
 /**

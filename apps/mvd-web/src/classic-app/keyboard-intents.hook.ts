@@ -25,11 +25,13 @@ export function useKeyboardIntents (menus: MenuSnapshot[], onIntent: (intent: Wo
 
         return
       }
-      if (isPlainCharacter(event)) {
-        event.preventDefault()
-        event.stopPropagation()
-        onIntent({ kind: 'key', key: event.key })
+      if (!isPlainCharacter(event)) {
+        return
       }
+
+      event.preventDefault()
+      event.stopPropagation()
+      onIntent({ kind: 'key', key: event.key })
     }
     document.addEventListener('keydown', onKeyDown, { capture: true })
 

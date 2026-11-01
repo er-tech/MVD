@@ -8,12 +8,12 @@ function Probe ({ host }: { host: React.RefObject<HTMLElement | null> }) {
   return null
 }
 
-function drawnWith (background: string): HTMLElement {
+function drawnWith (): HTMLElement {
   const main = document.createElement('main')
   const rows = document.createElement('div')
   rows.className = 'xterm-rows'
   main.append(rows)
-  paint(main, background)
+  paint(main, '#2a2a2a')
 
   return main
 }
@@ -42,7 +42,7 @@ describe('useFollowTerminalBackground', () => {
   })
 
   it('makes the strip beside the terminal the colour the program drew, and follows a new theme', async () => {
-    const main = drawnWith('#2a2a2a')
+    const main = drawnWith()
     const root = createRoot(document.createElement('div'))
     act(() => root.render(<Probe host={{ current: main }} />))
     expect(main.style.getPropertyValue('--terminal-background')).toBe('rgb(42, 42, 42)')
@@ -58,7 +58,7 @@ describe('useFollowTerminalBackground', () => {
   })
 
   it('gives the page its own colour back when it goes', () => {
-    const main = drawnWith('#2a2a2a')
+    const main = drawnWith()
     const root = createRoot(document.createElement('div'))
     act(() => root.render(<Probe host={{ current: main }} />))
     act(() => root.unmount())
