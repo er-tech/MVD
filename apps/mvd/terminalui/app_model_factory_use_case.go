@@ -1,5 +1,5 @@
 // Package terminalui serves mvd's terminal interface (the setup screens and the
-// download screen, the same ones mvd-tui shows) to a browser window, through
+// download screen, the terminal look) to a browser window, through
 // TReactUI.
 package terminalui
 

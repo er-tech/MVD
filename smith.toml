@@ -96,19 +96,6 @@ kind = "lib"
 command = ["go", "test", "-tags", "mvddebug", "./libs/mvd-core/..."]
 cwd = "."
 
-[projects.mvd-tui]
-root = "apps/mvd-tui"
-language = "go"
-kind = "app"
-
-[projects.mvd-tui.release]
-asset_name = "{product}_{version}_{os}_{arch}.{ext}"
-product = "mvd-tui"
-os_alias = { darwin = "macos" }
-
-[projects.mvd-tui.tasks.start]
-command = ["go", "run", "."]
-
 [projects.mvd-web.tasks.package]
 command = ["node", "-e", "const fs=require('node:fs');fs.mkdirSync('dist/drop/mvd-web',{recursive:true});const A=require('adm-zip');let z;z=new A();z.addLocalFolder('apps/mvd-web/dist-dev');z.writeZip('dist/drop/mvd-web/react-app-mvd-web-dev.zip');z=new A();z.addLocalFolder('apps/mvd-web/dist-uat');z.writeZip('dist/drop/mvd-web/react-app-mvd-web-uat.zip');z=new A();z.addLocalFolder('apps/mvd-web/dist-prod');z.writeZip('dist/drop/mvd-web/react-app-mvd-web-prod.zip')"]
 cwd = "."

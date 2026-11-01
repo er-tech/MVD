@@ -1,6 +1,6 @@
 // MVD desktop app: a window of its own that shows the terminal interface (the same
 // screens as the terminal app), carried over the window's own events with no server or
-// port, and that takes new URLs while it downloads. Closing the window quits, and so does quitting from its screens. The terminal app is apps/mvd-tui; both share
+// port, and that takes new URLs while it downloads. Closing the window quits, and so does quitting from its screens. The libraries it uses are shared in libs/mvd-core; they share
 // libs/mvd-core.
 package main
 
