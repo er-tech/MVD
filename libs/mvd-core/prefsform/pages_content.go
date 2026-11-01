@@ -2,6 +2,7 @@ package prefsform
 
 import (
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -210,7 +211,7 @@ func Pages(caps Capabilities) []Page {
 		}
 		theme = append([]Field{windowStyleField(), windowSchemeField()}, theme...)
 	}
-	return []Page{
+	pages := []Page{
 		{Name: "Output", Fields: []Field{
 			{Label: "Videos Output Folder", Hint: "The folder your videos are saved in. Browse… picks another one.", Kind: KindFolder,
 				Get: func(c config.Config) string { return c.OutputDir },
@@ -252,4 +253,10 @@ func Pages(caps Capabilities) []Page {
 		{Name: "Advanced", Fields: advanced},
 		{Name: "Theme", Fields: theme},
 	}
+	// Best Audio On The Video is made for Windows only, so no other system lists it.
+	if runtime.GOOS != "windows" {
+		download := &pages[1]
+		download.Fields = slices.DeleteFunc(download.Fields, func(f Field) bool { return f.Label == "Best Audio On The Video" })
+	}
+	return pages
 }
