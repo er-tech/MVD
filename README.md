@@ -10,10 +10,10 @@ Remember the 90s? Back when music videos were an absolute cultural obsession, ki
 
 **MVD (Music Video Downloader)** is built for that exact flavor of raw visual nostalgia—minus the ear-bleeding 56k modem noise. Written in Go and powered by `yt-dlp`, it’s designed to snatch back the golden, unfiltered era of music television with zero setup friction.
 
-[**Go on, download it, I know you need it**](https://github.com/russoedu/MVD/releases/latest)
+[**Go on, download it, I know you need it**](https://github.com/er-tech/MVD/releases/latest)
 
 
-<a href="https://github.com/russoedu/MVD/releases/latest" target="_blank" align="center">
+<a href="https://github.com/er-tech/MVD/releases/latest" target="_blank" align="center">
   <img src="assets/download-01.gif" alt="Download" width="200">
   <img src="assets/download-02.gif" alt="Download" width="200">
 </a>
@@ -69,6 +69,10 @@ We didn't just write a tool; we embraced the total, gloriously ugly anarchy of e
   <img src="assets/screenshots/about-this-app.png" alt="The About this app window, in full Windows 95 style" width="520">
 </p>
 
+### 🔊 Coming next: the Music Fix
+
+A music video from YouTube often sounds worse than the song on the streaming services. The Music Fix closes that gap: after an official video is downloaded, MVD fetches the best audio of the same song, lines it up with the picture and writes a new video with the better sound. Switch it on under Preferences > Download > *Best Audio On The Video*. It takes a little extra time per song, it is off by default, and it ships with the next release on Windows.
+
 ---
 <p align="center">
   <img src="assets/features.gif" alt="MVD - Music Video Downloader" width="480">
@@ -82,10 +86,24 @@ We didn't just write a tool; we embraced the total, gloriously ugly anarchy of e
 * 🍪 **Automatic Cookie Hijacking:** Automatically detects signed-in YouTube cookies from installed local browsers (Firefox, Chrome, Edge) to dodge `403 Forbidden` errors, `429 Rate Limits`, and bot check walls without asking you to configure a thing.
 * 🎧 **Spotify & Apple Music Import:** Paste a public playlist link, no login and no API key. Every song is searched on YouTube: the official video first, the best other upload when there is none, and a song with no match fails alone without stopping the rest.
 * 📝 **Your Own Song List:** Press `Ctrl+O`, paste or type `Artist - Title` lines (or a CSV exported from any service) and every song is hunted down the same way. Works for Deezer, Tidal, Amazon Music, Last.fm, a note on your phone, anything that can give you a list.
+* 🔊 **Music Fix (next release, Windows):** Turn on *Best Audio On The Video* and MVD fetches the best sound of each song, then rebuilds the official video with it, lined up with the picture. Same clip, proper hi-fi sound. Made with [Metil](https://github.com/er-tech/Metil). If anything goes wrong, the video you already downloaded stays untouched.
+* 👑 **Premium 256 kbps:** Sign in to YouTube inside MVD (Windows), or let it use the browser whose login is Premium, and your downloads carry the 256 kbps audio instead of the free tier.
+* 🕹 **Pick Your Decade:** Preferences > Look dresses the whole app as Windows 95, XP, Vista, classic Mac or Aqua. Nostalgia has settings.
+* 🔄 **Stays Fresh By Itself:** Looks once a day for a newer MVD (Help > Check for updates), keeps `yt-dlp` and `ffmpeg` current in the background, and re-queues what failed because they were old.
 * 🎨 **Your Own Neon:** Eight interface colours you can change in the app (`c` on the preferences) or in the config file.
 * 🖥 **Its Own Window:** Runs as a desktop app with a window of its own on Windows, macOS and Linux, or as a standalone, hardcore `mvd-tui` terminal executable.
 * ⟲ **Relentless Auto-Retry Engine:** Instantly powers through temporary network glitches and sweeps back around for rate-limited downloads once cooldowns reset—ignoring dead, private, or geo-blocked tracks like a champ.
 * 💻 **Cross-Platform & Self-Relocating:** Built for Windows, macOS (Universal/Apple Silicon/Intel), and Linux. Offers to cleanly drop itself into your OS application directory on first launch, complete with a built-in self-destruct uninstaller.
+
+---
+
+### 🕹 Pick Your Decade
+
+Nine looks for the one window, under Preferences > Look: the MVD terminal, Windows 3.1, 95, XP and Vista, Mac OS 7.6 and 9, and Mac OS X 10.0 and 10.4.
+
+<p align="center">
+  <img src="assets/screenshots/styles/all-styles.png" alt="All nine window styles of MVD" width="720">
+</p>
 
 ---
 

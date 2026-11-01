@@ -11,7 +11,7 @@ import (
 
 // releasesURL lists the releases of the project, newest first. The repository also publishes
 // the terminal app (mvd-tui@x.y.z), so "the latest release" would not always be this one.
-const releasesURL = "https://api.github.com/repos/russoedu/MVD/releases?per_page=30"
+const releasesURL = "https://api.github.com/repos/er-tech/MVD/releases?per_page=30"
 
 const tagPrefix = "mvd@"
 

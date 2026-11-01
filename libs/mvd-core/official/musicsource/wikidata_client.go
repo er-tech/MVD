@@ -31,7 +31,7 @@ func NewWikidataClient() *WikidataClient {
 	return &WikidataClient{
 		HTTP:        &http.Client{Timeout: 20 * time.Second},
 		Endpoint:    "https://query.wikidata.org/sparql",
-		UserAgent:   "MVD-MusicVideoDownloader/1.0 (https://github.com/russoedu/MVD)",
+		UserAgent:   "MVD-MusicVideoDownloader/1.0 (https://github.com/er-tech/MVD)",
 		MinInterval: time.Second,
 	}
 }

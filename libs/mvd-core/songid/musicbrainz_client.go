@@ -29,7 +29,7 @@ func NewMusicBrainzClient() *MusicBrainzClient {
 	return &MusicBrainzClient{
 		HTTP:        &http.Client{Timeout: 20 * time.Second},
 		Endpoint:    "https://musicbrainz.org/ws/2/recording",
-		UserAgent:   "MVD-MusicVideoDownloader/1.0 (https://github.com/russoedu/MVD)",
+		UserAgent:   "MVD-MusicVideoDownloader/1.0 (https://github.com/er-tech/MVD)",
 		MinInterval: 1100 * time.Millisecond,
 	}
 }

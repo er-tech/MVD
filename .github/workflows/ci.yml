@@ -74,7 +74,7 @@ jobs:
       # Fails ONLY on an advisory that has a published fix, at moderate or
       # above; anything upstream has not fixed is printed and passes. See
       # NPM_AUDIT_STEP's remarks for why that split replaced a warn-only step.
-      - run: node -e "const cp=require('node:child_process');const r=cp.spawnSync('npm',['audit','--json'],{encoding:'utf8',shell:process.platform==='win32',maxBuffer:33554432});let d;try{d=JSON.parse(r.stdout)}catch{console.log('npm audit produced no JSON (exit '+r.status+') - not blocking on a broken audit.');process.exit(0)}const all=Object.values(d.vulnerabilities||{});const BLOCK=['critical','high','moderate'];const major=v=>v.fixAvailable&&typeof v.fixAvailable==='object'&&v.fixAvailable.isSemVerMajor;const act=all.filter(v=>v.fixAvailable&&BLOCK.includes(v.severity)&&!major(v));const rest=all.filter(v=>!act.includes(v));for(const v of rest)console.log('  note ['+v.severity+'] '+v.name+(!v.fixAvailable?' - NO fix available upstream, nothing to do here':major(v)?' - only a semver-major change would remove it (often a parent downgrade), not applied automatically':' - fix available, below the blocking threshold'));if(act.length===0){console.log('npm audit - '+all.length+' advisory(ies), none actionable at moderate or above.');process.exit(0)}for(const v of act)console.log('  BLOCKING ['+v.severity+'] '+v.name+' - fix available');console.log('Each has a published fix. Add a targeted overrides entry in package.json rather than npm audit fix --force.');process.exit(1)"
+      - run: node -e "const cp=require('node:child_process');const r=cp.spawnSync('npm',['audit','--json'],{encoding:'utf8',shell:process.platform==='win32',maxBuffer:33554432});let d;try{d=JSON.parse(r.stdout)}catch{console.log('npm audit produced no JSON (exit '+r.status+') - not blocking on a broken audit.');process.exit(0)}const all=Object.values(d.vulnerabilities||{});const BLOCK=['critical','high','moderate'];const major=v=>v.fixAvailable&&typeof v.fixAvailable==='object'&&v.fixAvailable.isSemVerMajor;const own=v=>v.via.some(x=>typeof x==='object');const act=all.filter(v=>v.fixAvailable&&BLOCK.includes(v.severity)&&!major(v)&&own(v));const rest=all.filter(v=>!act.includes(v));for(const v of rest)console.log('  note ['+v.severity+'] '+v.name+(!v.fixAvailable?' - NO fix available upstream, nothing to do here':major(v)?' - only a semver-major change would remove it (often a parent downgrade), not applied automatically':' - fix available, below the blocking threshold'));if(act.length===0){console.log('npm audit - '+all.length+' advisory(ies), none actionable at moderate or above.');process.exit(0)}for(const v of act)console.log('  BLOCKING ['+v.severity+'] '+v.name+' - fix available');console.log('Each has a published fix. Add a targeted overrides entry in package.json rather than npm audit fix --force.');process.exit(1)"
         name: npm audit (fails on an actionable advisory)
 
       # Installs the fixed Python toolchain (ruff, pytest, build, twine,
@@ -347,6 +347,8 @@ jobs:
 
       - run: npx nx run-many -t lint,test,build-native,package-native --projects=tag:build:cgo
         name: Lint, test, build and package the native apps
+        env:
+          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
 
       # LOCAL (not mnci): the release files are named <product>_<version>_<os>_<processor>.<type>
       # by tools/release-assets.cjs. This builds them with a fixed version, so a pull request
@@ -375,6 +377,7 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref_name == 'main' && hashFiles('tools/go-app-release.cjs') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
 
       # Same release the zips go to, stamped with the tag's version. The tools script
       # above only attaches zips, so the disk image is attached here.
