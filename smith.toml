@@ -1,0 +1,120 @@
+#:schema https://raw.githubusercontent.com/monosmith-app/monosmith/main/apps/smith/workspace/smith.schema.json
+# smith workspace configuration. Written by `smith convert`; edit it freely or with the TUI.
+# Every setting is optional except [workspace] name; see https://github.com/monosmith-app/monosmith/blob/main/docs/reference/configuration.md.
+schema = 1
+
+[workspace]
+name = "mvd"
+defaults = "2026.11"
+scope = "@mvd"
+allowed_outputs = ["apps/mvd/appwindow/web"]
+shared_outputs = ["dist/drop"]
+
+[ci]
+providers = ["github"]
+secrets = ["METIL_TOKEN"]
+native_linux_packages = ["gcc", "pkg-config", "libgtk-3-dev", "libwebkit2gtk-4.1-dev"]
+
+[release]
+github_releases = true
+
+[default_stacks]
+node = "node-jest"
+
+[[groups]]
+select = ["lang:go"]
+
+[groups.tasks.lint]
+command = ["golangci-lint", "run", "--allow-serial-runners"]
+
+[projects.mvd]
+root = "apps/mvd"
+language = "go"
+kind = "app"
+
+[projects.mvd.release]
+asset_name = "go-app-{product}-{os}-{arch}.{ext}"
+product = "mvd"
+
+[projects.mvd.tasks.build]
+depends_on = ["stage-web"]
+
+[projects.mvd.tasks.build-native]
+command = ["node", "-e", "const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd/'+os+'-'+arch+'/mvd'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-tags','production'+(os==='linux'?',gtk3':''),'-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd',stdio:'inherit',env:{...process.env,CGO_ENABLED:'1'}});process.exit(r.status??1)"]
+cwd = "."
+depends_on = ["stage-web", "fetch-music-fixer"]
+inputs = ["**/*", "{workspaceRoot}/go.mod", "{workspaceRoot}/go.sum"]
+outputs = ["../../dist/platforms/mvd"]
+
+[projects.mvd.tasks.fetch-music-fixer]
+command = ["node", "tools/fetch-music-fixer.cjs"]
+cwd = "."
+
+[projects.mvd.tasks.lint]
+command = ["golangci-lint", "run", "--build-tags", "production,gtk3", "--allow-serial-runners"]
+depends_on = ["stage-web"]
+
+[projects.mvd.tasks.package-dmg]
+command = ["sh", "apps/mvd/dmg/build-dmg.sh"]
+cwd = "."
+depends_on = ["stage-web"]
+inputs = ["**/*", "{workspaceRoot}/go.mod", "{workspaceRoot}/go.sum", "{workspaceRoot}/assets/mvd-logo.svg"]
+outputs = ["../../dist/drop"]
+
+[projects.mvd.tasks.package-native]
+command = ["node", "tools/release-assets.cjs", "zip", "mvd"]
+cwd = "."
+depends_on = ["build-native"]
+outputs = ["../../dist/drop"]
+
+[projects.mvd.tasks.stage-web]
+command = ["node", "-e", "const fs=require('node:fs');fs.rmSync('apps/mvd/appwindow/web',{recursive:true,force:true});fs.cpSync('apps/mvd-web/dist','apps/mvd/appwindow/web',{recursive:true})"]
+cwd = "."
+depends_on = ["mvd-web:build"]
+outputs = ["appwindow/web"]
+
+[projects.mvd.tasks.start]
+command = ["go", "run", "-tags", "production,gtk3", "."]
+depends_on = ["stage-web"]
+
+[projects.mvd.tasks.test]
+depends_on = ["stage-web"]
+
+[projects.mvd-core]
+root = "libs/mvd-core"
+language = "go"
+kind = "lib"
+
+[projects.mvd-core.tasks.test-debug]
+command = ["go", "test", "-tags", "mvddebug", "./libs/mvd-core/..."]
+cwd = "."
+
+[projects.mvd-tui]
+root = "apps/mvd-tui"
+language = "go"
+kind = "app"
+
+[projects.mvd-tui.release]
+asset_name = "go-app-{product}-{os}-{arch}.{ext}"
+product = "mvd-tui"
+
+[projects.mvd-tui.tasks.start]
+command = ["go", "run", "."]
+
+[projects.mvd-web.tasks.package]
+command = ["node", "-e", "const fs=require('node:fs');fs.mkdirSync('dist/drop/mvd-web',{recursive:true});const A=require('adm-zip');let z;z=new A();z.addLocalFolder('apps/mvd-web/dist-dev');z.writeZip('dist/drop/mvd-web/react-app-mvd-web-dev.zip');z=new A();z.addLocalFolder('apps/mvd-web/dist-uat');z.writeZip('dist/drop/mvd-web/react-app-mvd-web-uat.zip');z=new A();z.addLocalFolder('apps/mvd-web/dist-prod');z.writeZip('dist/drop/mvd-web/react-app-mvd-web-prod.zip')"]
+cwd = "."
+depends_on = ["build", "build-dev", "build-uat", "build-prod"]
+outputs = ["../../dist/drop/mvd-web"]
+
+[projects.mvd-web.tasks.preview]
+depends_on = ["build"]
+
+[projects.mvd-web.tasks.test]
+env = { TS_NODE_COMPILER_OPTIONS = "{\"moduleResolution\":\"node10\",\"module\":\"commonjs\",\"customConditions\":null}" }
+
+[projects.mvd-web.tasks.typecheck]
+depends_on = ["^build", "^typecheck"]
+
+[agent]
+enabled = false
