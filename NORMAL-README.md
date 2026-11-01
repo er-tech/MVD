@@ -4,7 +4,7 @@
 
 # Music Video Downloader (Go + yt-dlp) - the boring description...
 
-A lightweight, zero-setup, concurrent Go application with two front ends, a desktop app with a window of its own (`mvd`) and a terminal app (`mvd-tui`). The terminal app has interactive screens: paste a list of playlists/videos, tune settings in a preferences screen, and watch a live download dashboard. It self-diagnoses and installs missing dependencies, borrows your browser's YouTube cookies automatically, downloads in parallel, and keeps its config and list in your OS preferences folder.
+A lightweight, zero-setup, concurrent Go application: a desktop app (`mvd`) with a window of its own and interactive screens. Paste a list of playlists or videos, tune settings in a preferences screen, and watch a live download dashboard. It self-diagnoses and installs missing dependencies, borrows your browser's YouTube cookies automatically, downloads in parallel, and keeps its config and list in your OS preferences folder.
 
 ---
 
@@ -30,12 +30,12 @@ A lightweight, zero-setup, concurrent Go application with two front ends, a desk
 
 ## 🌐 The desktop app (`mvd`)
 
-`apps/mvd` builds the program `mvd`, the main app: a window of its own showing the terminal interface (the same screens as the terminal app, `mvd-tui`, described after this section), on the same engine. It is a normal program: closing the window quits it (it asks first when downloads are still running). The window's page and its connection are Wails' own (no local server, no port), so nothing listens on the network. Starting it again raises the window that is already open instead of opening a second one. Paste links into it at any time, including while it is downloading (`a`).
+`apps/mvd` builds the program `mvd`, the main app: a window of its own showing the terminal interface (the terminal look, described after this section), on the same engine. It is a normal program: closing the window quits it (it asks first when downloads are still running). The window's page and its connection are Wails' own (no local server, no port), so nothing listens on the network. Starting it again raises the window that is already open instead of opening a second one. Paste links into it at any time, including while it is downloading (`a`).
 
 ```powershell
-npx nx run mvd:build          # builds the React page, embeds it, builds the binary
+smith run build -p mvd          # builds the React page, embeds it, builds the binary
 ./dist/apps/mvd/mvd           # flag: -uninstall
-npx nx run mvd:start          # development: builds the page, then runs the app
+smith run start -p mvd          # development: builds the page, then runs the app
 ```
 
 <p align="center">
@@ -56,7 +56,7 @@ Limits: ffmpeg is kept current on Windows only (the project that publishes the b
 - **macOS:** the release has an `mvd_<version>_macos_universal.dmg`. Open it and drag **MVD** onto the **Applications** link in the same window. The app is not notarized by Apple, so the first launch needs a right-click on MVD and **Open**; on newer macOS, if it still refuses, open System Settings, Privacy & Security and choose **Open Anyway**. An MVD started from anywhere else offers to move itself to `/Applications/MVD.app` (everyone) or `~/Applications/MVD.app` (just you).
 - **Linux:** `~/.local/bin/mvd` with an entry in the applications menu.
 
-**Windows says it is a virus?** Windows Defender has flagged an MVD download as `Trojan:Win32/Bearfoos.A!ml`. The `!ml` ending means a machine-learning guess, not a known signature, and MVD is not code-signed, so this looks like a false positive, but that is for you to judge: the source is here, every release is built by the public CI of this repository, and you can build it yourself (`npx nx run mvd:build`). If Defender quarantines it, you can restore it and report it to Microsoft as a false positive at <https://www.microsoft.com/en-us/wdsi/filesubmission>.
+**Windows says it is a virus?** Windows Defender has flagged an MVD download as `Trojan:Win32/Bearfoos.A!ml`. The `!ml` ending means a machine-learning guess, not a known signature, and MVD is not code-signed, so this looks like a false positive, but that is for you to judge: the source is here, every release is built by the public CI of this repository, and you can build it yourself (`smith run build -p mvd`). If Defender quarantines it, you can restore it and report it to Microsoft as a false positive at <https://www.microsoft.com/en-us/wdsi/filesubmission>.
 
 The macOS and Linux paths, and the `.dmg`, are covered by unit tests and CI only; they have not been run on a real machine.
 
@@ -68,38 +68,15 @@ The macOS and Linux paths, and the `.dmg`, are covered by unit tests and CI only
 
 Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
 
-**The terminal window.** Starting the app opens the terminal interface in a window of its own: the same screens as `apps/mvd-tui` (download list, preferences, downloads), carried by [TReactUI](https://github.com/meta-ui-labs/treactui) over the window's own events (`apps/mvd/terminalui`, with the page from `apps/mvd-web`). The window is drawn by the system's web view through [Wails](https://wails.io) v2, so no browser has to be installed: WebView2 on Windows (part of Windows 11 and of current Windows 10; Wails offers to install it where it is missing), WKWebView on macOS, and WebKitGTK 4.1 on Linux (`libwebkit2gtk-4.1`, found in the package manager of current distributions; the terminal app `mvd-tui` needs nothing of the kind). It is one window: closing it quits the app, after asking when downloads are running, and starting the app again raises the open window. It has the mouse (click a key hint or a row, wheel to scroll) and paste. The web view's own shortcuts are kept from firing while the window is focused, so Ctrl+P opens the preferences instead of the print dialog. It reads and writes the same `config.conf` and `list.txt` as the terminal app. Keys: `a` adds links to a running download, and on the preferences `m` moves the app to its own folder, `u` uninstalls and the folder settings open the system's own folder chooser.
+**The terminal window.** Starting the app opens the terminal interface in a window of its own: the screens of `libs/mvd-core/tui` (download list, preferences, downloads), carried by [TReactUI](https://github.com/meta-ui-labs/treactui) over the window's own events (`apps/mvd/terminalui`, with the page from `apps/mvd-web`). The window is drawn by the system's web view through [Wails](https://wails.io) v2, so no browser has to be installed: WebView2 on Windows (part of Windows 11 and of current Windows 10; Wails offers to install it where it is missing), WKWebView on macOS, and WebKitGTK 4.1 on Linux (`libwebkit2gtk-4.1`, found in the package manager of current distributions). It is one window: closing it quits the app, after asking when downloads are running, and starting the app again raises the open window. It has the mouse (click a key hint or a row, wheel to scroll) and paste. The web view's own shortcuts are kept from firing while the window is focused, so Ctrl+P opens the preferences instead of the print dialog. It reads and writes the same `config.conf` and `list.txt` as the terminal app. Keys: `a` adds links to a running download, and on the preferences `m` moves the app to its own folder, `u` uninstalls and the folder settings open the system's own folder chooser.
 
-The page is `apps/mvd-web` (React: the 90s header with its pixel-art logo and the *About this app* window (pictured below), above `<TTY>` from [`@treactui/tty`](https://www.npmjs.com/package/@treactui/tty) filling the rest); `apps/mvd/appwindow` shows it in the Wails 3 window: Wails serves the built page itself (embedded from `appwindow/web`, which the `stage-web` target fills) and the page talks to the Go program through Wails events, with no server, port or WebSocket (`createWailsSocket` on the page, `ttygo.BindShared` in Go); the terminal interface is `apps/mvd/terminalui`, which builds the app model of `libs/mvd-core/tui` as a program shared by every page load. The page works only inside the window. `mvd -uninstall` asks and removes in its own process; a copy that is running keeps running until it is closed, since removing the program just moves it aside. The old flags `-addr`, `-no-window`, `-no-browser` and `-no-tray` are still accepted and do nothing. Single instance is Wails' own: a second start finds the first and raises its window. The preferences are a window of their own: the program opens a second Wails window on the same page (`/?window=preferences`, see `apps/mvd/appwindow/preferences_window_client.go`), the main window cannot be used while it is open, and closing it by any means asks the program to close the preferences. The app needs a C toolchain to build on macOS and Linux (the web views are native), which is why it is built on a runner of each OS; on Linux the build needs `libgtk-3-dev` and `libwebkit2gtk-4.1-dev` and the tags `production,gtk3` (Wails 3 builds for GTK 4 unless told `gtk3`) (set in `apps/mvd/project.json`); Windows builds without a C compiler. The Windows release is a windowed program, so no console window opens next to the window; a start-up error is shown in a message box instead, and when it is started from a terminal it also prints there. That comes from `-H=windowsgui` in the `build-native` target of `apps/mvd/project.json`, which is edited by hand (mnci cannot pass the flag yet), and from `libs/mvd-core/procwindow`, which keeps yt-dlp and the folder chooser from opening console windows of their own. Plain `nx run mvd:build` and `go run` stay console builds, so you see the logs.
+The page is `apps/mvd-web` (React: the 90s header with its pixel-art logo and the *About this app* window (pictured below), above `<TTY>` from [`@treactui/tty`](https://www.npmjs.com/package/@treactui/tty) filling the rest); `apps/mvd/appwindow` shows it in the Wails 3 window: Wails serves the built page itself (embedded from `appwindow/web`, which the `stage-web` target fills) and the page talks to the Go program through Wails events, with no server, port or WebSocket (`createWailsSocket` on the page, `ttygo.BindShared` in Go); the terminal interface is `apps/mvd/terminalui`, which builds the app model of `libs/mvd-core/tui` as a program shared by every page load. The page works only inside the window. `mvd -uninstall` asks and removes in its own process; a copy that is running keeps running until it is closed, since removing the program just moves it aside. The old flags `-addr`, `-no-window`, `-no-browser` and `-no-tray` are still accepted and do nothing. Single instance is Wails' own: a second start finds the first and raises its window. The preferences are a window of their own: the program opens a second Wails window on the same page (`/?window=preferences`, see `apps/mvd/appwindow/preferences_window_client.go`), the main window cannot be used while it is open, and closing it by any means asks the program to close the preferences. The app needs a C toolchain to build on macOS and Linux (the web views are native), which is why it is built on a runner of each OS; on Linux the build needs `libgtk-3-dev` and `libwebkit2gtk-4.1-dev` and the tags `production,gtk3` (Wails 3 builds for GTK 4 unless told `gtk3`) (set in `apps/mvd/project.json`); Windows builds without a C compiler. The Windows release is a windowed program, so no console window opens next to the window; a start-up error is shown in a message box instead, and when it is started from a terminal it also prints there. That comes from `-H=windowsgui` in the `build-native` task of `smith.toml`, and from `libs/mvd-core/procwindow`, which keeps yt-dlp and the folder chooser from opening console windows of their own. Plain `smith run build -p mvd` and `go run` stay console builds, so you see the logs.
 
 <p align="center">
   <img src="assets/screenshots/about-this-app.png" alt="The About this app window" width="560">
 </p>
 
-## 🚀 Quick Start (terminal app)
-
-Build and run; on first launch it creates a default config in your preferences folder and opens the **preferences** screen:
-
-```powershell
-go build -o mvd-tui.exe ./apps/mvd-tui
-.\mvd-tui.exe
-```
-
-Then: paste your playlist/video URLs on the **list** screen (one per line), press `Ctrl+S` to start, and the **download** dashboard takes over.
-
-<p align="center">
-  <img src="assets/screenshots/download-list.png" alt="The list screen: playlist and video links, one per line" width="560">
-</p> Everything is kept in the app-data folder (see below) — there are no config files next to the binary.
-
-For an unattended/headless run (pipes, CI, cron) it downloads the saved list with a plain log instead of the screens:
-
-```powershell
-.\mvd-tui.exe --no-tui
-```
-
----
-
-## 🖥️ The terminal app interface (`mvd-tui`)
+## 🖥️ The terminal look (the default window style)
 
 ```
 ╭─ MVD · Music Video Downloader ──────────────────────────────────────── 00:12:41 ─╮
@@ -285,9 +262,9 @@ That is what makes it possible to do a long playlist **in small chunks**:
 
 ## 🗂️ Code Layout
 
-The repository is an [mnci](https://github.com/russoedu/MoNecromanCi) (Nx) workspace with one Go module at the root: `apps/` holds the programs (`apps/mvd-tui`, the terminal app; `apps/mvd`, the desktop app, with its window's page in `apps/mvd-web` and the window itself, made with Wails, in `apps/mvd/appwindow`) and `libs/` the code they share (`libs/mvd-core`, the engine and the screens), so each front end reuses the engine instead of copying it. `npx nx run-many -t test,build` builds and tests all of it.
+The repository is a [smith](https://github.com/monosmith-app/monosmith) workspace with one Go module at the root: `apps/` holds the programs (`apps/mvd`, the desktop app, with its window's page in `apps/mvd-web` and the window itself, made with Wails, in `apps/mvd/appwindow`) and `libs/` the code they share (`libs/mvd-core`, the engine and the screens), so each front end reuses the engine instead of copying it. `npx nx run-many -t test,build` builds and tests all of it.
 
-The code follows vertical feature slices: `apps/mvd-tui/main.go` only wires things together, and every folder under `libs/mvd-core/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
+The code follows vertical feature slices: `apps/mvd/main.go` only wires things together, and every folder under `libs/mvd-core/` is one slice that owns one outcome. A slice is flat, and each file is named `<name>_<role>.go` so the role says what the file does (`use_case` coordinates an operation, `policy` is a reusable decision, `algorithm` is pure computation, `mapper` converts representations, `contract` is data crossing a boundary, `client` talks to an external service, `store` holds runtime state, `repository` persists, `handler` adapts a transport such as the keyboard, `config` and `enum` are what they say).
 
 | Slice | Outcome |
 |---|---|
@@ -312,19 +289,13 @@ Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `officia
 ## 🛠️ Building & Releasing
 
 ```powershell
-# Build for your OS
-go build -o mvd-tui.exe ./apps/mvd-tui
+# Build the desktop app for your OS (the React page first, then the binary)
+smith run build -p mvd
 
-# Run the tests (Nx runs each project from its own folder; a bare `go test ./...`
-# from the root would also walk node_modules once `npm install` has run)
-npx nx run-many -t test
-
-# Plain log output (no full screen interface)
-.\mvd-tui.exe --no-tui
+# Run the tests of every project
+smith run test
 ```
 
-A push to `main` makes a release only when it holds a `feat:` or `fix:` commit that touches a program or the code it shares; `chore:` and `docs:` commits (this README, dependency pins, screenshots) never do. CI also lints and tests every project, builds the native apps on Windows, macOS and Linux runners, and fails on a critical or high `npm audit` advisory.
+A push to `main` makes a release only when it holds a `feat:` or `fix:` commit that touches the program or the code it shares; `chore:` and `docs:` commits (this README, dependency pins, screenshots) never do. CI lints and tests every project and builds the native app on Windows, macOS and Linux runners.
 
-Both apps release from `ci.yml` (mnci): a push to `main` versions each from conventional commits, tags it (`mvd@x.y.z`, `mvd-tui@x.y.z`) and attaches its files to that GitHub Release. The files are named `<product>_<version>_<os>_<processor>.<type>` (`mvd_0.0.9_windows_amd64.zip`, `mvd_0.0.9_macos_universal.dmg`, `mvd-tui_0.1.0_linux_arm64.zip`), where the product is `mvd` for the desktop app (the project `mvd`) and `mvd-tui` for the terminal app, and macOS is always written `macos`. `tools/release-assets.cjs` is the one place that decides the names, and CI builds every file with a fixed version and fails if one breaks the rule. The desktop app is a `--cgo` app, so its zip is built on a runner of each OS (the macOS image holds one universal program); the terminal app is cross-compiled for the six platforms. Nx therefore leaves `mvd` out of the cross-compiling verify job and builds it in the `native` job instead. Releases up to 0.0.10 were published as `mvd-tray@x.y.z`; from the next one they are `mvd@x.y.z`. The file names did not change.
-
-An older workflow, `release.yml`, still builds the terminal app on a `v*` tag under the name `youtube-downloader-<os>-<arch>`; it predates the mnci release and does not follow the naming above (it tests only `mvd-tui` and `libs`, because `mvd` cannot compile until its React page has been built into `apps/mvd/appwindow/web`).
+The app releases from `ci.yml` (smith): a push to `main` versions it from conventional commits, tags it (`mvd@x.y.z`) and attaches its files to that GitHub Release. The files are named `<product>_<version>_<os>_<processor>.<type>` (`mvd_0.0.9_windows_amd64.zip`, `mvd_0.0.9_macos_universal.dmg`) by `tools/release-assets.cjs`. The standalone terminal app, `mvd-tui`, was retired; its earlier releases stay on GitHub.

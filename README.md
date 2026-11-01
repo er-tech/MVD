@@ -52,7 +52,7 @@ We didn't just write a tool; we embraced the total, gloriously ugly anarchy of e
 
 * **Iconically Ugly Branding:** Stare directly at that logo. Feast your eyes on toxic neon green and Barney-purple fonts stretched out in mismatched, unholy serif/sans-serif proportions. It looks like it was hacked together in Microsoft Paint on Windows 95 while blasting *Smells Like Teen Spirit* on loop—and that’s **exactly** why it rules.
 * **A Real App (`mvd`):** A normal desktop program with a window of its own (drawn by the system's web view through Wails: WebView2 on Windows, WebKit on macOS and Linux, so no browser required) holding the whole terminal-style interface and a pixel-art 90s header. Close the window and it quits (asking first if downloads are still running).
-* **TUI Madness (`mvd-tui`):** Modern Web3 rounded buttons and pastel design systems? Absolute trash. MVD serves up pure, hard-edged ASCII terminal UI (TUI) box-drawing energy. Run it straight in your terminal or see the very same interactive TUI inside the app window, rendered through TReactUI.
+* **TUI Madness (the DOS look):** Modern Web3 rounded buttons and pastel design systems? Absolute trash. The default look of the app window is pure, hard-edged ASCII terminal UI (TUI) box-drawing energy, rendered through TReactUI. Prefer another decade? Pick one under Preferences > Look.
 
 ### 📸 Caught in the act
 
@@ -91,7 +91,7 @@ A music video from YouTube often sounds worse than the song on the streaming ser
 * 🕹 **Pick Your Decade:** Preferences > Look dresses the whole app as Windows 95, XP, Vista, classic Mac or Aqua. Nostalgia has settings.
 * 🔄 **Stays Fresh By Itself:** Looks once a day for a newer MVD (Help > Check for updates), keeps `yt-dlp` and `ffmpeg` current in the background, and re-queues what failed because they were old.
 * 🎨 **Your Own Neon:** Eight interface colours you can change in the app (`c` on the preferences) or in the config file.
-* 🖥 **Its Own Window:** Runs as a desktop app with a window of its own on Windows, macOS and Linux, or as a standalone, hardcore `mvd-tui` terminal executable.
+* 🖥 **Its Own Window:** Runs as a desktop app with a window of its own on Windows, macOS and Linux.
 * ⟲ **Relentless Auto-Retry Engine:** Instantly powers through temporary network glitches and sweeps back around for rate-limited downloads once cooldowns reset—ignoring dead, private, or geo-blocked tracks like a champ.
 * 💻 **Cross-Platform & Self-Relocating:** Built for Windows, macOS (Universal/Apple Silicon/Intel), and Linux. Offers to cleanly drop itself into your OS application directory on first launch, complete with a built-in self-destruct uninstaller.
 
