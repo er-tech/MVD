@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,21 +17,24 @@ import (
 // betterAudio is what runs on every official video that was downloaded, when the setting Best
 // Audio On The Video is on: the best sound of the song is fetched and music-fixer recreates the
 // video with it, lined up with the picture. The new video takes the place of the downloaded one
-// only when everything worked; otherwise the downloaded video stays as it is. It is nil when
-// this build has no music-fixer or the system has no ffmpeg, so the song is not delayed for
-// nothing.
+// only when everything worked; otherwise the downloaded video stays as it is. When this build
+// has no music-fixer or the system has no ffmpeg, nothing is tried and each video says why, so
+// the song is not delayed for nothing and the setting is not silent.
 func betterAudio(ytDlpPath string, extraArgs []string) func(ctx context.Context, videoID string, files []string, log func(string, ...any)) error {
 	dir, err := appdir.Dir()
 	if err != nil {
-		return nil
+		return notDone("the app folder is not available")
 	}
 	exe, err := musicfixer.Install(dir)
+	if errors.Is(err, musicfixer.ErrNotBundled) {
+		return notDone("this build of MVD has no music-fixer")
+	}
 	if err != nil {
-		return nil
+		return notDone(fmt.Sprintf("music-fixer could not be set up (%v)", err))
 	}
 	ffmpeg := audiofix.FFmpegFor(ytDlpPath)
 	if ffmpeg == "" {
-		return nil
+		return notDone("ffmpeg was not found")
 	}
 	return func(ctx context.Context, videoID string, files []string, log func(string, ...any)) error {
 		video := videoOf(files)
@@ -68,6 +72,16 @@ func betterAudio(ytDlpPath string, extraArgs []string) func(ctx context.Context,
 			_ = os.Remove(video)
 		}
 		log("[better audio] done (the sound was moved %d ms)", res.OffsetMs)
+		return nil
+	}
+}
+
+// notDone is the step used when the best audio cannot be put on a video: it only says why, and
+// the downloaded video stays as it is.
+func notDone(reason string) func(ctx context.Context, videoID string, files []string, log func(string, ...any)) error {
+	return func(_ context.Context, _ string, _ []string, log func(string, ...any)) error {
+		log("[better audio] not done: %s; the video stays as it was downloaded", reason)
+
 		return nil
 	}
 }
