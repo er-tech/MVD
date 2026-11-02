@@ -7,6 +7,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      assets_tag:
+        description: "Run only the assets job again for this release tag (project@version), from this branch"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -18,9 +24,10 @@ concurrency:
 
 jobs:
   ci:
+    if: ${{ inputs.assets_tag == '' }}
     runs-on: ubuntu-latest
     outputs:
-      released: ${{ steps.release.outputs.released || steps.released.outputs.done }}
+      released: ${{ steps.release.outputs.released }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -37,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
-          key: smith-go-${{ runner.os }}-${{ hashFiles('apps/mvd/go.sum', 'libs/mvd-core/go.sum', 'apps/mvd-tui/go.sum') }}
+          key: smith-go-${{ runner.os }}-${{ hashFiles('apps/mvd/go.sum', 'libs/mvd-core/go.sum') }}
           restore-keys: |
             smith-go-${{ runner.os }}-
       - name: Cache the npm download store
@@ -50,7 +57,7 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.13
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.18
           smith --version
       # smith:slot before-setup
       # smith:slot-end before-setup
@@ -92,10 +99,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
-      - name: Mark the release done
-        id: released
-        if: github.event_name == 'push' && github.ref_name == 'main'
-        run: echo "done=true" >> "$GITHUB_OUTPUT"
 
   native:
     needs: ci
@@ -120,7 +123,7 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.13
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.18
           smith --version
       - name: Setup
         run: smith ci setup
@@ -140,7 +143,7 @@ jobs:
 
   assets:
     needs: ci
-    if: ${{ always() && needs.ci.outputs.released == 'true' && github.event_name == 'push' && github.ref_name == 'main' }}
+    if: ${{ always() && ((needs.ci.outputs.released == 'true' && github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'workflow_dispatch' && inputs.assets_tag != '')) }}
     strategy:
       fail-fast: false
       matrix:
@@ -167,15 +170,16 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.13
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.18
           smith --version
       - name: Setup
         run: smith ci setup --assets
         env:
           METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
       - name: Build and upload the release files
-        run: smith ci assets
+        run: smith ci assets --tag "$ASSETS_TAG"
         env:
+          ASSETS_TAG: ${{ inputs.assets_tag }}
           SMITH_PLATFORM: ${{ matrix.platform }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           METIL_TOKEN: ${{ secrets.METIL_TOKEN }}

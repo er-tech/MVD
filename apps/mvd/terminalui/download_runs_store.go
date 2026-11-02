@@ -163,7 +163,7 @@ func (r *Runs) launch(ctx context.Context, cancel context.CancelFunc, eng *engin
 }
 
 // engineRun is a download run the app model can close: Close cancels it and waits
-// until the engine has stopped and its events are drained, as mvd-tui does. It is
+// until the engine has stopped and its events are drained, as the terminal screens do. It is
 // the engine itself, so the download screen can also add links to it.
 type engineRun struct {
 	*engine.Engine
