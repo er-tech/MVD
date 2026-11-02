@@ -13,6 +13,15 @@ on:
         description: "Run only the assets job again for this release tag (project@version), from this branch"
         required: false
         default: ""
+      assets_source:
+        description: "With assets_tag: the code to build. current = the code of this branch as it is now, named with the tag's version (a fix reaches the files, but they carry newer code under an old number). tag = the tag's own commit, the exact code that was released. choose = stop and ask me"
+        type: choice
+        required: true
+        default: choose
+        options:
+          - choose
+          - current
+          - tag
 
 permissions:
   contents: write
@@ -57,7 +66,7 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.18
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.21
           smith --version
       # smith:slot before-setup
       # smith:slot-end before-setup
@@ -123,7 +132,7 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.18
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.21
           smith --version
       - name: Setup
         run: smith ci setup
@@ -170,16 +179,20 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.18
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.21
           smith --version
+      - name: Install the Linux packages
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
       - name: Setup
         run: smith ci setup --assets
         env:
           METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
       - name: Build and upload the release files
-        run: smith ci assets --tag "$ASSETS_TAG"
+        run: smith ci assets --tag "$ASSETS_TAG" --source "$ASSETS_SOURCE"
         env:
           ASSETS_TAG: ${{ inputs.assets_tag }}
+          ASSETS_SOURCE: ${{ inputs.assets_source }}
           SMITH_PLATFORM: ${{ matrix.platform }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
