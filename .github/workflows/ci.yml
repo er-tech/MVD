@@ -22,6 +22,10 @@ on:
           - current
           - tag
           - "ask me (refuses)"
+      release_bump:
+        description: "Release by hand a package no commit releases, as project=patch|minor|major (several: separate with commas). This publishes to the registries, tags HEAD and cannot be undone. Empty: no manual release"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -66,7 +70,7 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.23
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.24
           smith --version
       # smith:slot before-setup
       # smith:slot-end before-setup
@@ -90,28 +94,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Pack
-        if: github.event_name == 'push' && github.ref_name == 'main'
+        if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_bump != '')) && github.ref_name == 'main'
         run: smith ci pack
         env:
           METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
       - name: Keep the packed apps (dist/drop as artifact drop)
         uses: actions/upload-artifact@v7
-        if: github.event_name == 'push' && github.ref_name == 'main'
+        if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_bump != '')) && github.ref_name == 'main'
         with:
           name: drop
           path: dist/drop
           if-no-files-found: ignore
       - name: Release
         id: release
-        if: github.event_name == 'push' && github.ref_name == 'main'
-        run: smith ci release
+        if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_bump != '')) && github.ref_name == 'main'
+        run: |
+          if [ -n "$RELEASE_BUMP" ]; then
+            smith ci release --bump "$RELEASE_BUMP" --force
+          else
+            smith ci release
+          fi
         env:
+          RELEASE_BUMP: ${{ inputs.release_bump }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
 
   native:
     needs: ci
-    if: ${{ always() && (needs.ci.result == 'success' || (github.event_name == 'push' && needs.ci.outputs.released == 'true')) }}
+    if: ${{ always() && (needs.ci.result == 'success' || ((github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_bump != '')) && needs.ci.outputs.released == 'true')) }}
     strategy:
       fail-fast: false
       matrix:
@@ -132,7 +142,7 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.23
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.24
           smith --version
       - name: Setup
         run: smith ci setup
@@ -152,7 +162,7 @@ jobs:
 
   assets:
     needs: ci
-    if: ${{ always() && ((needs.ci.outputs.released == 'true' && github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'workflow_dispatch' && inputs.assets_tag != '')) }}
+    if: ${{ always() && ((needs.ci.outputs.released == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_bump != '')) && github.ref_name == 'main') || (github.event_name == 'workflow_dispatch' && inputs.assets_tag != '')) }}
     strategy:
       fail-fast: false
       matrix:
@@ -179,7 +189,7 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.23
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.24
           smith --version
       - name: Install the Linux packages
         if: runner.os == 'Linux'
