@@ -1,8 +1,6 @@
 package prefsform
 
 import (
-	"runtime"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -211,7 +209,7 @@ func Pages(caps Capabilities) []Page {
 		}
 		theme = append([]Field{windowStyleField(), windowSchemeField()}, theme...)
 	}
-	pages := []Page{
+	return []Page{
 		{Name: "Output", Fields: []Field{
 			{Label: "Videos Output Folder", Hint: "The folder your videos are saved in. Browse… picks another one.", Kind: KindFolder,
 				Get: func(c config.Config) string { return c.OutputDir },
@@ -233,8 +231,7 @@ func Pages(caps Capabilities) []Page {
 			{Label: "Download Official Music Video", Hint: "Yes: use the official music video when there is one, and the video as it is otherwise. Only: download just the songs that have one. No: never look for it.", Kind: KindChoice, Options: config.OfficialModes,
 				Get: func(c config.Config) string { return string(c.OfficialVideo) },
 				Set: func(c *config.Config, v string) { c.OfficialVideo = config.OfficialMode(v) }},
-			{Label: "Best Audio On The Video", Hint: "The video is recreated with the best possible music MVD can get: after an official music video is downloaded, the best quality of the song is fetched and put in place of its sound, lined up with the picture. It takes extra time for every song, and the video you downloaded is kept if anything goes wrong. Windows only.", Kind: KindChoice, Options: yesNo,
-				Shown: func(config.Config) bool { return runtime.GOOS == "windows" },
+			{Label: "Best Audio On The Video", Hint: "The video is recreated with the best possible music MVD can get: after an official music video is downloaded, the best quality of the song is fetched and put in place of its sound, lined up with the picture. It takes extra time for every song, and the video you downloaded is kept if anything goes wrong.", Kind: KindChoice, Options: yesNo,
 				Get:   func(c config.Config) string { return boolText(c.BetterAudio) },
 				Set:   func(c *config.Config, v string) { c.BetterAudio = v == "yes" }},
 			{Label: "Max Concurrent Downloads", Hint: "How many videos are downloaded at the same time. More is faster but uses more of your connection.", Kind: KindStepper, Min: 1, Max: 32, Step: 1,
@@ -253,10 +250,4 @@ func Pages(caps Capabilities) []Page {
 		{Name: "Advanced", Fields: advanced},
 		{Name: "Theme", Fields: theme},
 	}
-	// Best Audio On The Video is made for Windows only, so no other system lists it.
-	if runtime.GOOS != "windows" {
-		download := &pages[1]
-		download.Fields = slices.DeleteFunc(download.Fields, func(f Field) bool { return f.Label == "Best Audio On The Video" })
-	}
-	return pages
 }

@@ -18,7 +18,7 @@ A lightweight, zero-setup, concurrent Go application: a desktop app (`mvd`) with
 * **Automatic browser cookies**: Finds a browser you're signed into YouTube with and uses its cookies to clear bot checks and `429` errors, with no configuration.
 * **Spotify and Apple Music playlists**: Paste a public playlist link; the app reads its songs without any login and finds each one on YouTube, the official video first (see below).
 * **Song lists from anywhere**: A text file of `Artist - Title` lines, or a CSV with title and artist columns, is handled like a playlist (see below).
-* **Best audio on the video** (next release, Windows only): After an official video is downloaded, the best audio of the song is fetched and the video is recreated with it, lined up with the picture (see below).
+* **Best audio on the video**: After an official video is downloaded, the best audio of the song is fetched and the video is recreated with it, lined up with the picture (see below).
 * **Premium audio**: Sign in to YouTube in MVD's own window (Windows), or let it use the browser whose login is Premium, to get 256 kbps audio.
 * **Window styles**: Preferences > Look gives the app the look of Windows 95, XP, Vista, classic Mac or Aqua.
 * **Updates**: Looks once a day for a newer MVD (Help > Check for updates) and keeps yt-dlp and ffmpeg current.
@@ -189,9 +189,9 @@ When all you have is the artist and the title of each song, give the app a list.
 
 Each song is then found on YouTube exactly as the songs of a Spotify playlist are: the official video first, the best other upload when there is none, and a song with no match fails alone.
 
-### Best audio on the video (next release)
+### Best audio on the video
 
-Windows only. Set `better_audio=yes` in `config.conf`, or choose *Best Audio On The Video* in the preferences. For every official video MVD downloads, it then fetches the best audio of the same song, and the music-fixer app (made with [Metil](https://github.com/er-tech/Metil), embedded in the release build) recreates the video with that sound, lined up with the picture. The new video replaces the downloaded one only when every step worked; otherwise the downloaded video stays as it is. It adds time to every song and needs ffmpeg, which MVD installs. It is off by default.
+Set `better_audio=yes` in `config.conf`, or choose *Best Audio On The Video* in the preferences. For every official video MVD downloads, it then fetches the best audio of the same song, and the music-fixer app (made with [Metil](https://github.com/er-tech/Metil), embedded in the release build) recreates the video with that sound, lined up with the picture. The new video replaces the downloaded one only when every step worked; otherwise the downloaded video stays as it is. It adds time to every song and needs ffmpeg, which MVD installs. It is off by default.
 
 ### Official music video mode
 
