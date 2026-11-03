@@ -9,6 +9,7 @@ import (
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/musicsearch"
+	"youtube-downloader/libs/mvd-core/run/downloadsnapshot"
 	"youtube-downloader/libs/mvd-core/workspace/closequestion"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 )
@@ -207,5 +208,18 @@ func TestAnAddressBeingWrittenIsAQuestionOfTheWindow(t *testing.T) {
 	done := next.(Model)
 	if done.Window().Question != nil || addressesOf(done)[0] != "https://www.youtube.com/playlist?list=b" {
 		t.Errorf("after OK: question %+v, addresses %v", done.Window().Question, addressesOf(done))
+	}
+}
+
+func TestTheWordsNextToASourceSayHowManySongsAreDone(t *testing.T) {
+	cases := map[string]downloadsnapshot.PlaylistRow{
+		"33 of 140 done": {Count: "33/140", Done: 33, Total: 140},
+		"reading":        {Count: "reading"},
+		"can't read":     {Count: "can't read"},
+	}
+	for want, row := range cases {
+		if got := sourceDetail(row); got != want {
+			t.Errorf("sourceDetail(%+v) = %q, want %q", row, got, want)
+		}
 	}
 }

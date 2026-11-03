@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -167,12 +168,21 @@ func (m Model) windowActivity() windowsnapshot.Activity {
 	return windowsnapshot.ActivityIdle
 }
 
+// sourceDetail is the words next to a source: how many of its songs are finished, or why not.
+func sourceDetail(row downloadsnapshot.PlaylistRow) string {
+	if row.Total == 0 {
+		return row.Count
+	}
+
+	return fmt.Sprintf("%d of %d done", row.Done, row.Total)
+}
+
 // windowSources are the sources of the list.
 func windowSources(s downloadsession.Session) windowsnapshot.Sources {
 	rows := downloadsnapshot.PlaylistRowsOf(s)
 	out := windowsnapshot.Sources{Heading: wording.Counted(len(rows), "source"), Rows: []windowsnapshot.SourceRow{}, Selected: s.SelPlaylist}
 	for i, row := range rows {
-		out.Rows = append(out.Rows, windowsnapshot.SourceRow{ID: strconv.Itoa(i), Label: row.Name, Detail: row.Count, Tone: windowTone(row.Glyph.Tone)})
+		out.Rows = append(out.Rows, windowsnapshot.SourceRow{ID: strconv.Itoa(i), Label: row.Name, Detail: sourceDetail(row), Tone: windowTone(row.Glyph.Tone)})
 	}
 
 	return out

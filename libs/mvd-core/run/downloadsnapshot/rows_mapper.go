@@ -15,13 +15,13 @@ func PlaylistRowsOf(s downloadsession.Session) []PlaylistRow {
 	for _, pl := range s.State.Playlists {
 		finished, _, _ := s.State.PlaylistTally(pl)
 		finished -= s.WaitingIn(pl) // a song that waits to be chosen is not done
-		count := fmt.Sprintf("%d/%d", finished, len(pl.Entries))
+		count, total := fmt.Sprintf("%d/%d", finished, len(pl.Entries)), len(pl.Entries)
 		if pl.Err != "" {
-			count = "can't read"
+			count, total = "can't read", 0
 		} else if !pl.Listed {
-			count = "reading"
+			count, total = "reading", 0
 		}
-		rows = append(rows, PlaylistRow{Name: PlaylistName(s, pl), Count: count, Glyph: playlistGlyph(s, pl)})
+		rows = append(rows, PlaylistRow{Name: PlaylistName(s, pl), Count: count, Done: finished, Total: total, Glyph: playlistGlyph(s, pl)})
 	}
 
 	return rows
