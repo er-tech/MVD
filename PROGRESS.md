@@ -35,8 +35,12 @@ built an outline after every update, and a lost command at start left the list n
 
 - `workspaceApp.update` dropped the command that a `WindowSizeMsg` produced. When that message
   began loading the list, the workspace stayed "starting" and nothing loaded. Fixed, with a test.
-- The window still costs about 120% of a core in one WebView2 process while a list loads, with no
-  terminal at all. Next: profile the songs table (react-aria `Table`, one row per song).
+- The click lag came mostly from the page: a shell with `NODE_ENV=local` made Vite bundle the
+  development React, which kept the main thread 99.9% busy while a list loaded (13% with the
+  production bundle). `vite.config.mts` now sets `NODE_ENV=production` for every build.
+- `ShowPreferences` focused the preferences window at every model update (about 8 a second), which
+  made an open dropdown blink. It no longer does.
+- A source shows "x of z official found" until its download starts, then "x of z downloaded".
 
 ## Left over from test runs
 
