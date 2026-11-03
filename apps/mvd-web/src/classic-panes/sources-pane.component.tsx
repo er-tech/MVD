@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { ListBox, ListBoxItem, Menu, MenuItem, Popover } from 'react-aria-components'
 import type { SourcesSnapshot } from '../workspace-snapshot'
 
@@ -30,7 +30,7 @@ const pageZoom = (): number => Number(getComputedStyle(document.documentElement)
  * The sources of the list: platform addresses and searches by name, one row each. A right click on
  * one, or the menu key, chooses it and opens its menu: remove it, move it up or down.
  */
-export function SourcesPane ({ sources, onSelect, actions = [], onAction }: SourcesPaneProps) {
+export const SourcesPane = memo(function SourcesPane ({ sources, onSelect, actions = [], onAction }: SourcesPaneProps) {
   const selected = sources.rows[sources.selected]?.id
   const [menu, setMenu] = useState<MenuPlace | null>(null)
   const anchorRef = useRef<HTMLSpanElement>(null)
@@ -111,4 +111,4 @@ export function SourcesPane ({ sources, onSelect, actions = [], onAction }: Sour
       </Popover>
     </section>
   )
-}
+})

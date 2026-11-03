@@ -1,21 +1,18 @@
-import type { ReactNode } from 'react'
+import { useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { AddMusicWindow } from '../add-music-window'
-import { layoutOf, type ClassicTheme } from '../classic-themes'
+import type { ClassicTheme } from '../classic-themes'
 import { DetailsPane, SongsTable, SourcesPane, type SourceAction } from '../classic-panes'
 import { ClassicWindow } from '../classic-window'
 import type { MenuSnapshot, WorkspaceIntent, WorkspaceSnapshot } from '../workspace-snapshot'
-import { CoveredScreen } from './covered-screen.component'
 import { useKeyboardIntents } from './keyboard-intents.hook'
 import { QuestionWindow } from './question-window.component'
 
 interface ClassicAppProps {
-  theme:           ClassicTheme
+  theme:    ClassicTheme
   /** The theme's colour scheme; none for its first, the system's own. */
-  scheme?:         string
-  snapshot:        WorkspaceSnapshot
-  onIntent:        (intent: WorkspaceIntent) => void
-  /** Closes a screen only the terminal draws, as Esc does there; nil where none is drawn. */
-  onCloseCovered?: () => void
+  scheme?:  string
+  snapshot: WorkspaceSnapshot
+  onIntent: (intent: WorkspaceIntent) => void
 }
 
 /** The Edit menu's entries that act on the source chosen, by their label, as its own menu calls them. */
@@ -36,9 +33,21 @@ function sourceActions (menus: MenuSnapshot[]): SourceAction[] {
  * screen the themes do not draw yet. It draws what the snapshot says and sends back what the
  * person does; MVD decides the rest.
  */
-export function ClassicApp ({ theme, scheme, snapshot, onIntent, onCloseCovered }: ClassicAppProps) {
-  const { covered, adding, question } = snapshot
-  useKeyboardIntents(snapshot.menus, onIntent, !covered && !adding && !question)
+export function ClassicApp ({ theme, scheme, snapshot, onIntent }: ClassicAppProps) {
+  const { adding, question } = snapshot
+  useKeyboardIntents(snapshot.menus, onIntent, !adding && !question)
+  // The panes redraw only when what they are given changes, so what is given must stay the same between snapshots.
+  const actions = useMemo(() => sourceActions(snapshot.menus), [snapshot.menus])
+  const selectSource = useCallback((index: number) => onIntent({ kind: 'select-source', index }), [onIntent])
+  const runMenu = useCallback((id: string) => onIntent({ kind: 'menu', id }), [onIntent])
+  const selectSong = useCallback((index: number) => onIntent({ kind: 'select-song', index }), [onIntent])
+  // A row says which song it is by its id, as it is not drawn again when the songs shift; the program counts them.
+  const songs = useRef(snapshot.songs.rows)
+  songs.current = snapshot.songs.rows
+  const tickSong = useCallback((id: string, ticked: boolean) => {
+    const index = songs.current.findIndex(row => row.id === id)
+    if (index !== -1) onIntent({ kind: 'tick-song', index, ticked })
+  }, [onIntent])
 
   return (
     <>
@@ -70,18 +79,13 @@ export function ClassicApp ({ theme, scheme, snapshot, onIntent, onCloseCovered 
       >
         <SourcesPane
           sources={snapshot.sources}
-          onSelect={index => onIntent({ kind: 'select-source', index })}
-          actions={sourceActions(snapshot.menus)}
-          onAction={id => onIntent({ kind: 'menu', id })}
+          onSelect={selectSource}
+          actions={actions}
+          onAction={runMenu}
         />
-        <SongsTable
-          songs={snapshot.songs}
-          onSelect={index => onIntent({ kind: 'select-song', index })}
-          onTick={(index, ticked) => onIntent({ kind: 'tick-song', index, ticked })}
-        />
+        <SongsTable songs={snapshot.songs} onSelect={selectSong} onTick={tickSong} />
         <DetailsPane details={snapshot.details} />
       </ClassicWindow>
-      {covered && <CoveredScreen title={covered.title} layout={layoutOf(theme)} onClose={() => onCloseCovered?.()} />}
     </>
   )
 }

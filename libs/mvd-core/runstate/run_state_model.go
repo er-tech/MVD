@@ -302,6 +302,34 @@ func (s *State) PlaylistTally(pl *Playlist) (finished, failed, active int) {
 	return
 }
 
+// PlaylistDownloaded is how many songs of the link are downloaded: the ones the header counts as
+// done, not the ones that ended some other way (no official video, skipped, failed).
+func (s *State) PlaylistDownloaded(pl *Playlist) int {
+	n := 0
+	for _, id := range pl.Entries {
+		if en := s.Entries[id]; en != nil && en.State == engine.StateDone {
+			n++
+		}
+	}
+
+	return n
+}
+
+// PlaylistDownloadBegun says whether any song of the link has gone past the look-up: it is being
+// downloaded or has ended, whichever way.
+func (s *State) PlaylistDownloadBegun(pl *Playlist) bool {
+	for _, id := range pl.Entries {
+		if en := s.Entries[id]; en != nil {
+			switch en.State {
+			case engine.StateDownloading, engine.StateMerging, engine.StateDone, engine.StateDuplicate, engine.StateFailed:
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // Elapsed is how long the run has been going: up to now while it works, and up to the moment it
 // went idle once it has finished, so the time of a finished run does not keep growing.
 func (s *State) Elapsed() time.Duration {

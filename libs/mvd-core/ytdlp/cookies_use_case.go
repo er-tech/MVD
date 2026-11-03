@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"youtube-downloader/libs/mvd-core/procwindow"
+	"youtube-downloader/libs/mvd-core/ytdlpgate"
 )
 
 // ExportCookies asks yt-dlp to read the browser's cookies and save them as
@@ -23,6 +24,12 @@ func ExportCookies(ctx context.Context, bin, browserSpec, file, probeURL string,
 	}
 	args = append(args, extraArgs...)
 	args = append(args, probeURL)
+
+	release, gateErr := ytdlpgate.Acquire(ctx)
+	if gateErr != nil {
+		return gateErr
+	}
+	defer release()
 
 	cmd := exec.CommandContext(ctx, bin, args...)
 	procwindow.Hide(cmd)

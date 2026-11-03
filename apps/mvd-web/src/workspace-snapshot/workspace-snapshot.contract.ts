@@ -19,11 +19,6 @@ export interface WorkspaceSnapshot {
   adding?:   AddMusicSnapshot
   /** The question or note open over the window: quitting, a line to write, About, the shortcuts. */
   question?: QuestionSnapshot
-  /**
-   * A screen only the terminal look draws so far (the preferences, a question...), when one is
-   * open over the window: the theme shows the terminal for it, under this title.
-   */
-  covered?:  { title: string }
 }
 
 /**

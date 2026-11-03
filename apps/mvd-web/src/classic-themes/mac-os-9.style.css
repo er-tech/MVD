@@ -145,9 +145,33 @@
   --cursor-progress: default;
 }
 
+/* The barber pole slides a strip of stripes one stripe along, which the GPU does; moving the background repaints it every frame. */
+:root[data-theme='mac-os-9'] .classic-progress-fill[data-unknown] {
+  position: relative;
+  overflow: hidden;
+  background: none;
+  animation: none;
+}
+
+:root[data-theme='mac-os-9'] .classic-progress-fill[data-unknown]::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(100% + 14.1px);
+  background: var(--progress-unknown);
+  animation: var(--progress-unknown-animation);
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme='mac-os-9'] .classic-progress-fill[data-unknown]::before {
+    animation: none;
+  }
+}
+
 @keyframes mac-9-progress-barber {
-  from { background-position: 0 0; }
-  to { background-position: 14.1px 0; }
+  from { transform: translateX(-14.1px); }
+  to { transform: translateX(0); }
 }
 
 /* Scroll bars: a sunken grey track, a lavender thumb with grip lines, bevelled arrow boxes. */

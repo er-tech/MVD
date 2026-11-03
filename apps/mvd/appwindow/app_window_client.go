@@ -1,6 +1,6 @@
 // Package appwindow shows the app in a window of its own, drawn by the system's web view
 // (WebView2 on Windows, WKWebView on macOS, WebKitGTK on Linux) through Wails 3. Wails serves
-// the page itself and carries the terminal interface between the page and Go as events, so
+// the page itself and carries what the program shows and what the person does between the page and Go as events, so
 // there is no server and no port. The app is a normal program: closing the main window
 // quits.
 package appwindow
@@ -13,7 +13,6 @@ import (
 	"runtime"
 	"sync/atomic"
 
-	ttygo "github.com/meta-ui-labs/treactui/packages/tty-go"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 
@@ -28,8 +27,6 @@ const uniqueID = "io.github.russoedu.mvd"
 
 // Options says what the window shows.
 type Options struct {
-	// Program is the terminal interface the window shows.
-	Program *ttygo.SharedProgram
 	// DataDir is the app-data folder; the web view keeps its profile in a folder inside.
 	DataDir string
 	// OnCloseRequest is told when the person asks to close the window (its close button, or the
@@ -79,7 +76,6 @@ func Run(ctx context.Context, opts Options) error {
 		Linux:   application.LinuxOptions{ProgramName: "MVD"},
 	})
 
-	bus := wailsEvents{app: app}
 	stopWindowEvents := app.Event.On(windowEvent, func(event *application.CustomEvent) {
 		if action, ok := event.Data.(string); ok && window != nil {
 			doWindowAction(app, window, action, opts.OnCloseRequest, &quitting)
@@ -107,8 +103,6 @@ func Run(ctx context.Context, opts Options) error {
 			}
 		})
 	}
-	unbind := ttygo.BindShared(ctx, opts.Program, bus, ttygo.BindOptions{})
-
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "main",
 		Title:     "MVD",
@@ -146,7 +140,6 @@ func Run(ctx context.Context, opts Options) error {
 	if stopClassic != nil {
 		stopClassic()
 	}
-	unbind()
 	if err != nil {
 		return errors.New("cannot open the app window: " + err.Error())
 	}

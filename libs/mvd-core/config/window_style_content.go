@@ -1,7 +1,7 @@
 package config
 
-// WindowStyleDOS is the terminal look MVD has always had, and the style it starts with.
-const WindowStyleDOS = "dos"
+// DefaultWindowStyle is the style a new config starts with, and the one an unknown id falls back to.
+const DefaultWindowStyle = "mac-os-9"
 
 // WindowStyle is a way the app's window can be drawn: ID is what the config file keeps and the
 // page's classic themes are called, Name what the preferences show.
@@ -9,10 +9,9 @@ type WindowStyle struct {
 	ID, Name string
 }
 
-// WindowStyles are the looks of the app's window: the terminal one, then the classic systems,
-// Windows first and the Mac after, each oldest first.
+// WindowStyles are the looks of the app's window, the classic systems: Windows first and the Mac
+// after, each oldest first.
 var WindowStyles = []WindowStyle{
-	{WindowStyleDOS, "MVD terminal (DOS)"},
 	{"windows-3-1", "Windows 3.1"},
 	{"windows-95", "Windows 95"},
 	{"windows-xp", "Windows XP"},

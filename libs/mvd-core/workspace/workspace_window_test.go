@@ -9,6 +9,7 @@ import (
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/musicsearch"
+	"youtube-downloader/libs/mvd-core/run/downloadsnapshot"
 	"youtube-downloader/libs/mvd-core/workspace/closequestion"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 )
@@ -71,8 +72,8 @@ func TestTheWindowShowsTheSourcesOfTheList(t *testing.T) {
 	if snap.Sources.Heading != "2 sources" || len(snap.Sources.Rows) != 2 {
 		t.Fatalf("sources = %+v", snap.Sources)
 	}
-	if snap.Activity != windowsnapshot.ActivityIdle || snap.Covered != nil {
-		t.Errorf("activity %q, covered %+v", snap.Activity, snap.Covered)
+	if snap.Activity != windowsnapshot.ActivityIdle {
+		t.Errorf("activity %q", snap.Activity)
 	}
 }
 
@@ -109,7 +110,7 @@ func TestARefusedAdditionKeepsTheWindowOpenWithTheReason(t *testing.T) {
 func TestAboutAndTheShortcutsAreNotesOfTheThemeThatOKCloses(t *testing.T) {
 	m := intent(listOf(), windowsnapshot.Intent{Kind: windowsnapshot.IntentMenu, ID: entryAbout})
 	about := m.Window().Question
-	if about == nil || about.ID != windowsnapshot.QuestionAbout || !strings.HasPrefix(about.Lines[1], "Version ") || m.Window().Covered != nil {
+	if about == nil || about.ID != windowsnapshot.QuestionAbout || !strings.HasPrefix(about.Lines[1], "Version ") {
 		t.Fatalf("about = %+v", about)
 	}
 	m = intent(m, windowsnapshot.Intent{Kind: windowsnapshot.IntentQuestionButton, ID: questionOK})
@@ -193,5 +194,33 @@ func TestSongsWaitingForTheirChoiceGiveTheThemedWindowAnAcceptButtonThatAcceptsT
 	}
 	if next := intent(m, windowsnapshot.Intent{Kind: windowsnapshot.IntentButton, ID: entryDownloadAll}); next.done == "" {
 		t.Error("pressing Accept said nothing")
+	}
+}
+
+func TestAnAddressBeingWrittenIsAQuestionOfTheWindow(t *testing.T) {
+	m, _ := listOf("https://www.youtube.com/playlist?list=a").startChange(0)
+	q := m.Window().Question
+	if q == nil || q.Field == nil || q.Field.Text != "https://www.youtube.com/playlist?list=a" {
+		t.Fatalf("question = %+v", q)
+	}
+	next, _ := m.questionIntent(windowsnapshot.Intent{Kind: windowsnapshot.IntentQuestionText, Text: "https://www.youtube.com/playlist?list=b"})
+	next, _ = next.(Model).questionIntent(windowsnapshot.Intent{Kind: windowsnapshot.IntentQuestionButton, ID: questionOK})
+	done := next.(Model)
+	if done.Window().Question != nil || addressesOf(done)[0] != "https://www.youtube.com/playlist?list=b" {
+		t.Errorf("after OK: question %+v, addresses %v", done.Window().Question, addressesOf(done))
+	}
+}
+
+func TestTheWordsNextToASourceSayHowManyOfficialVideosAreFound(t *testing.T) {
+	cases := map[string]downloadsnapshot.PlaylistRow{
+		"39 of 140 official found":                 {Count: "0/140", Official: 39, Total: 140},
+		"5 of 140 downloaded":                      {Count: "5/140", Official: 39, Done: 5, Begun: true, Total: 140},
+		"reading":        {Count: "reading"},
+		"can't read":     {Count: "can't read"},
+	}
+	for want, row := range cases {
+		if got := sourceDetail(row); got != want {
+			t.Errorf("sourceDetail(%+v) = %q, want %q", row, got, want)
+		}
 	}
 }

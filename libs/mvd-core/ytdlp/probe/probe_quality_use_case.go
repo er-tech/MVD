@@ -10,6 +10,7 @@ import (
 	"youtube-downloader/libs/mvd-core/ytdlp"
 
 	"youtube-downloader/libs/mvd-core/procwindow"
+	"youtube-downloader/libs/mvd-core/ytdlpgate"
 )
 
 // ProbeVideo asks yt-dlp what a video offers to download and what its storyboard is,
@@ -18,6 +19,12 @@ func ProbeVideo(ctx context.Context, bin, videoID string, extraArgs []string) (V
 	args := []string{"-J", "--no-playlist", "--skip-download", "--no-warnings"}
 	args = append(args, extraArgs...)
 	args = append(args, "https://www.youtube.com/watch?v="+videoID)
+
+	release, gateErr := ytdlpgate.Acquire(ctx)
+	if gateErr != nil {
+		return VideoProbe{}, gateErr
+	}
+	defer release()
 
 	cmd := exec.CommandContext(ctx, bin, args...)
 	procwindow.Hide(cmd)

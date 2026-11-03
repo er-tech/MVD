@@ -95,26 +95,20 @@ func colourField(label string, slot func(*config.ThemeColors) *string) Field {
 	}
 }
 
-// windowStyleField is the choice of how the window looks: MVD's terminal look, or one of the
-// classic systems.
+// windowStyleField is the choice of how the window looks: one of the classic systems.
 func windowStyleField() Field {
 	return Field{
 		Label: "Look", Kind: KindChoice, Options: config.WindowStyleIDs(), Show: config.WindowStyleName,
-		Hint: "The terminal look, or the look of a classic Windows or Mac. A change applies at once",
+		Hint: "The look of a classic Windows or Mac. A change applies at once",
 		Get: func(c config.Config) string {
 			if config.ValidWindowStyle(c.WindowStyle) {
 				return c.WindowStyle
 			}
-			return config.WindowStyleDOS
+			return config.DefaultWindowStyle
 		},
 		// Another style starts with its own first scheme.
 		Set: func(c *config.Config, v string) { c.WindowStyle, c.WindowScheme = v, "" },
 	}
-}
-
-// classicStyle says whether the settings draw the window in a classic system's look.
-func classicStyle(c config.Config) bool {
-	return config.ValidWindowStyle(c.WindowStyle) && c.WindowStyle != config.WindowStyleDOS
 }
 
 // windowSchemeField is the colour scheme of the classic style chosen, as the system offered them.
@@ -124,7 +118,6 @@ func windowSchemeField() Field {
 		Hint:     "The colours of the window, as the system offered them",
 		Choices:  func(c config.Config) []string { return config.WindowSchemeIDs(c.WindowStyle) },
 		ShowWith: func(c config.Config, v string) string { return config.WindowSchemeName(c.WindowStyle, v) },
-		Shown:    classicStyle,
 		Get:      func(c config.Config) string { return config.WindowSchemeOf(c.WindowStyle, c.WindowScheme) },
 		Set:      func(c *config.Config, v string) { c.WindowScheme = v },
 	}
@@ -202,12 +195,8 @@ func Pages(caps Capabilities) []Page {
 		colourField("Selected row (background)", func(t *config.ThemeColors) *string { return &t.Selected }),
 	}
 	if caps.CanStyleWindow {
-		// The terminal look's themes and colours are for the terminal look only.
-		terminalOnly := func(c config.Config) bool { return !classicStyle(c) }
-		for i := range theme {
-			theme[i].Shown = terminalOnly
-		}
-		theme = append([]Field{windowStyleField(), windowSchemeField()}, theme...)
+		// The window is always a classic system's look: the terminal themes and colours are not offered.
+		theme = []Field{windowStyleField(), windowSchemeField()}
 	}
 	return []Page{
 		{Name: "Output", Fields: []Field{

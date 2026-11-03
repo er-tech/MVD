@@ -7,10 +7,10 @@ type PreferencesLookProps = Omit<ComponentProps<typeof PreferencesWindow>, 'them
 
 // Loaded when the window opens, as it is the only thing the window shows.
 const PreferencesLook = lazy(async () => {
-  const [{ PreferencesWindow: Window }, { windowThemeOf }] = await Promise.all([import('../preferences-window'), import('../classic-themes')])
+  const [{ PreferencesWindow: Window }, { classicThemeOf }] = await Promise.all([import('../preferences-window'), import('../classic-themes')])
 
   function Look ({ style, ...rest }: PreferencesLookProps) {
-    return <Window {...rest} theme={windowThemeOf(style)} ownWindow />
+    return <Window {...rest} theme={classicThemeOf(style)} ownWindow />
   }
 
   return { default: Look }

@@ -54,8 +54,11 @@ const minPane = 20
 type (
 	// evMsg and evClosed say which run's events they came from, so what a run that was let go
 	// still says is not taken for what the run now shown says.
+	// more are the events that were already waiting when ev arrived, in order: a burst is one message, so
+	// the screen is drawn once for it and not once for each event.
 	evMsg struct {
 		ev   interface{}
+		more []interface{}
 		from <-chan interface{}
 	}
 	evClosed struct{ from <-chan interface{} }
@@ -118,13 +121,29 @@ func New(c Controller) Model {
 	return Model{session: downloadsession.New(c), events: c.Events()}
 }
 
+// maxBurst is the most events taken in one message, so a flood cannot hold the screen back for long.
+const maxBurst = 256
+
+// waitEvent waits for the next event of the run and takes with it the ones that are already waiting.
 func waitEvent(ch <-chan interface{}) tea.Cmd {
 	return func() tea.Msg {
 		ev, ok := <-ch
 		if !ok {
 			return evClosed{from: ch}
 		}
-		return evMsg{ev: ev, from: ch}
+		msg := evMsg{ev: ev, from: ch}
+		for len(msg.more) < maxBurst {
+			select {
+			case next, open := <-ch:
+				if !open {
+					return msg // the next wait finds the channel closed
+				}
+				msg.more = append(msg.more, next)
+			default:
+				return msg
+			}
+		}
+		return msg
 	}
 }
 
@@ -178,11 +197,13 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.from != nil && msg.from != m.events {
 			return m, nil // a run that has been let go: its events are not the ones shown
 		}
-		m.session.Apply(msg.ev)
-		if added, ok := msg.ev.(engine.EvPlaylistAdded); ok && m.session.State.PlaylistPos(added.Source.Index) >= 0 {
-			// A link that was just added is the one the person looks at: its songs come in under it.
-			m.entriesTop = 0
-			m.keepSelectionVisible()
+		for _, ev := range append([]interface{}{msg.ev}, msg.more...) {
+			m.session.Apply(ev)
+			if added, ok := ev.(engine.EvPlaylistAdded); ok && m.session.State.PlaylistPos(added.Source.Index) >= 0 {
+				// A link that was just added is the one the person looks at: its songs come in under it.
+				m.entriesTop = 0
+				m.keepSelectionVisible()
+			}
 		}
 		return m, waitEvent(m.events)
 

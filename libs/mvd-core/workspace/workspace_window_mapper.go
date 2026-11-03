@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,7 +26,6 @@ func (m Model) Window() windowsnapshot.Snapshot {
 		Status:   m.windowStatus(),
 		Activity: m.windowActivity(),
 		Question: m.windowQuestion(),
-		Covered:  m.windowCovered(),
 	}
 	if s.State == nil {
 		return snap
@@ -168,15 +168,18 @@ func (m Model) windowActivity() windowsnapshot.Activity {
 	return windowsnapshot.ActivityIdle
 }
 
-// windowCovered is the screen open over the window that only the terminal look draws so far.
-func (m Model) windowCovered() *windowsnapshot.Covered {
-	// The questions and notes are dialogs of the theme (see windowQuestion); only the address being
-	// written in its row is the terminal's still.
-	if !m.inline.on || m.windowQuestion() != nil {
-		return nil
+// sourceDetail is the words next to a source: how many of its songs have an official video found
+// until the download starts, then how many are downloaded; or why it has no songs yet.
+func sourceDetail(row downloadsnapshot.PlaylistRow) string {
+	if row.Total == 0 {
+		return row.Count
 	}
 
-	return &windowsnapshot.Covered{Title: "Change the address"}
+	if row.Begun {
+		return fmt.Sprintf("%d of %d downloaded", row.Done, row.Total)
+	}
+
+	return fmt.Sprintf("%d of %d official found", row.Official, row.Total)
 }
 
 // windowSources are the sources of the list.
@@ -184,7 +187,7 @@ func windowSources(s downloadsession.Session) windowsnapshot.Sources {
 	rows := downloadsnapshot.PlaylistRowsOf(s)
 	out := windowsnapshot.Sources{Heading: wording.Counted(len(rows), "source"), Rows: []windowsnapshot.SourceRow{}, Selected: s.SelPlaylist}
 	for i, row := range rows {
-		out.Rows = append(out.Rows, windowsnapshot.SourceRow{ID: strconv.Itoa(i), Label: row.Name, Detail: row.Count, Tone: windowTone(row.Glyph.Tone)})
+		out.Rows = append(out.Rows, windowsnapshot.SourceRow{ID: strconv.Itoa(i), Label: row.Name, Detail: sourceDetail(row), Tone: windowTone(row.Glyph.Tone)})
 	}
 
 	return out

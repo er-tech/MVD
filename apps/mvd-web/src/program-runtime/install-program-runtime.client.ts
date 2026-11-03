@@ -2,7 +2,7 @@ import { Browser, Events, Window } from '@wailsio/runtime'
 
 /**
  * The page talks to the program through a small `runtime` object (events, the window's size,
- * opening an address), the shape the terminal socket of treactui also asks for. Wails 3 has
+ * opening an address). Wails 3 has
  * its runtime as a module, so this builds that object from it.
  */
 interface ProgramRuntime {

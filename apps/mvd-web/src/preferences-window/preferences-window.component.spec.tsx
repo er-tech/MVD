@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { classicThemeOf, dosTheme } from '../classic-themes'
+import { classicThemeOf } from '../classic-themes'
 import { PreferencesWindow } from './preferences-window.component'
 import type { PreferencesIntent, PreferencesSnapshot } from './preferences-window.contract'
 
@@ -19,7 +19,7 @@ const prefs: PreferencesSnapshot = {
       blocks:  ['ARTIST', 'TITLE'],
     },
     { label: 'Retry Attempts', kind: 'number', value: '3', min: 1, max: 999, step: 1 },
-    { label: 'Window style', kind: 'choice', value: 'dos', options: [{ value: 'dos', label: 'MVD terminal (DOS)' }, { value: 'aqua', label: 'Mac OS X 10.0' }] },
+    { label: 'Window style', kind: 'choice', value: 'mac-os-9', options: [{ value: 'mac-os-9', label: 'Mac OS 9' }, { value: 'aqua', label: 'Mac OS X 10.0' }] },
     { label: 'Accent (title)', kind: 'colour', value: '#ff2a6d' },
     { label: 'Theme', kind: 'choice', value: 'MVD Neon', hidden: true },
     { label: 'Uninstall MVD', kind: 'action', value: '' },
@@ -86,12 +86,6 @@ describe('PreferencesWindow', () => {
     open(classicThemeOf('mac-os-9'))
     const labels = screen.getAllByRole('button').map(button => button.textContent).filter(text => text === 'Save' || text === 'Close')
     expect(labels).toEqual(['Close', 'Save'])
-  })
-
-  it('wears the terminal look with its colours for the DOS style', () => {
-    open(dosTheme)
-    expect(document.documentElement.dataset.family).toBe('dos')
-    expect(document.documentElement.style.getPropertyValue('--dos-accent')).toBe('#ff2a6d')
   })
 
   it('says what went wrong, and keeps the settings out of reach while the program asks', () => {

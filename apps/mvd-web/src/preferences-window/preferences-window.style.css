@@ -277,28 +277,3 @@
   display: flex;
   gap: 8px;
 }
-
-/* MVD's terminal look: the tabs are words in a row, the one shown inverted. */
-[data-family='dos'] .preferences-tab {
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  color: var(--text-dim);
-}
-
-[data-family='dos'] .preferences-tab[data-selected] {
-  margin-top: 0;
-  padding-bottom: 3px;
-  background: var(--select-bg);
-  color: var(--select-text);
-}
-
-[data-family='dos'] .preferences-page {
-  border: 1px solid var(--text-dim);
-  box-shadow: none;
-}
-
-[data-family='dos'] .preferences-label {
-  color: var(--text-busy);
-  font-weight: 400;
-}

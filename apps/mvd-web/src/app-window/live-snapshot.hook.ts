@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { WorkspaceIntent, WorkspaceSnapshot } from '../workspace-snapshot'
 import { onProgramEvent, sendToProgram } from './program-events.client'
+import { shareUnchanged } from './share-unchanged.algorithm'
 
 /** The events of the classic window (see apps/mvd/appwindow/classic_window_client.go). */
 const snapshotEvent = 'mvd:snapshot'
@@ -16,7 +17,9 @@ export function useLiveSnapshot (): [WorkspaceSnapshot | null, (intent: Workspac
   useEffect(() => onProgramEvent(snapshotEvent, value => {
     if (typeof value !== 'string') return
     try {
-      setSnapshot(JSON.parse(value) as WorkspaceSnapshot)
+      const next = JSON.parse(value) as WorkspaceSnapshot
+      // What did not change stays the same object, so only the parts that did are drawn again.
+      setSnapshot(previous => shareUnchanged(previous, next))
     } catch {
       // A snapshot that cannot be read is left out; the next one replaces it.
     }

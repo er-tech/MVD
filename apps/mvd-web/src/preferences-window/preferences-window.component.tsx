@@ -1,10 +1,9 @@
-import { useLayoutEffect } from 'react'
 import { Button, Dialog, Modal, ModalOverlay, Tab, TabList, TabPanel, Tabs } from 'react-aria-components'
 import { layoutOf, orderDialogButtons, type ClassicTheme } from '../classic-themes'
 import { TitleBar, useThemeOnRoot } from '../classic-window'
 import type { ButtonSnapshot } from '../workspace-snapshot'
 import { PreferenceField } from './preference-field.component'
-import type { PreferencesIntent, PreferencesSnapshot, TerminalColours } from './preferences-window.contract'
+import type { PreferencesIntent, PreferencesSnapshot } from './preferences-window.contract'
 
 interface PreferencesWindowProps {
   theme:      ClassicTheme
@@ -30,25 +29,6 @@ function buttonsFor (pending: boolean): ButtonSnapshot[] {
     : [{ id: 'close', label: 'Close', role: 'default', enabled: true }]
 }
 
-/** Wears the terminal look's colours on the page's root while MVD's own look draws the window. */
-function useTerminalColours (theme: ClassicTheme, colours: TerminalColours): void {
-  useLayoutEffect(() => {
-    if (theme.family !== 'dos') return
-    const root = document.documentElement
-    const entries = Object.entries(colours) as [keyof TerminalColours, string][]
-    const names = entries.map(([name]) => name)
-    for (const [name, colour] of entries) {
-      // An empty colour is the terminal's own, which the style's default stands in for.
-      if (colour === '') root.style.removeProperty(`--dos-${name}`)
-      else root.style.setProperty(`--dos-${name}`, colour)
-    }
-
-    return () => {
-      for (const name of names) root.style.removeProperty(`--dos-${name}`)
-    }
-  }, [theme, colours])
-}
-
 /**
  * The preferences, as a window of the theme: its tabs, the settings of the tab shown, what
  * happened last, and Save and Close where the system puts them. It draws what the program sends
@@ -57,7 +37,6 @@ function useTerminalColours (theme: ClassicTheme, colours: TerminalColours): voi
  */
 export function PreferencesWindow ({ theme, scheme, prefs, onIntent, ownWindow = false }: PreferencesWindowProps) {
   useThemeOnRoot(theme, scheme)
-  useTerminalColours(theme, prefs.colours)
   const layout = layoutOf(theme)
   const close = (): void => onIntent({ kind: 'prefs-close' })
 

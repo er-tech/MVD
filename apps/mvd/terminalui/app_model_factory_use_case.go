@@ -112,7 +112,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 			review = ""
 		}
 
-		return accessibleApp{tui.NewWorkspaceApp(tui.WorkspaceInput{
+		return tui.NewWorkspaceApp(tui.WorkspaceInput{
 			Setup:       tui.SetupInput{Cfg: cfg, URLs: urls, CfgPath: files.Config, ListPath: files.List, OpenConfig: created, PickFolder: host.PickFolder, Uninstall: host.Uninstall, Move: host.Move, SignIn: host.SignIn, SignInState: host.SignInState},
 			List:        list,
 			Live:        runner.LiveSettings,
@@ -143,6 +143,6 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 				CheckForUpdate: host.CheckForUpdate,
 				UpdateNote:     host.UpdateNote,
 			},
-		})}
+		})
 	}
 }

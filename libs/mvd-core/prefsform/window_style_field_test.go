@@ -26,7 +26,7 @@ func TestTheWindowStyleIsOfferedFirstOnlyWhereTheHostDrawsIt(t *testing.T) {
 		t.Fatalf("first field %q with %d options", field.Label, len(field.Options))
 	}
 	cfg := config.Config{}
-	if field.Get(cfg) != config.WindowStyleDOS {
+	if field.Get(cfg) != config.DefaultWindowStyle {
 		t.Errorf("an empty style reads %q", field.Get(cfg))
 	}
 	field.Set(&cfg, "windows-xp")

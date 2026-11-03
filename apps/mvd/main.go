@@ -174,7 +174,7 @@ func run(movedFrom string, askToMove bool, review string) error {
 		move = terminalui.Move(func() install.MoveResult { return install.MoveNow(appDir, version) }, stop)
 	}
 	// The terminal-style interface: the same screens as the terminal app, in a window.
-	program := terminalui.NewShared(terminalui.NewModelFactory(appDir, terminalui.Files{
+	program := terminalui.Start(ctx, terminalui.NewModelFactory(appDir, terminalui.Files{
 		Config: terminalui.ConfigPath(appDir),
 		List:   filepath.Join(appDir, "list.txt"),
 		Review: review,
@@ -215,7 +215,7 @@ func run(movedFrom string, askToMove bool, review string) error {
 		// Signing in inside MVD is only done on Windows, where yt-dlp can read the window's cookies.
 		SignIn:      signInHost(ctx, appDir, ytDlpPath),
 		SignInState: func() string { return cookies.SignInState(appDir) },
-	}, logf))
+	}, logf)())
 
 	// .mvd files are download lists of this program: they get its icon and open it. It is
 	// told at every start, so it follows the program when it moves.
@@ -241,7 +241,7 @@ func run(movedFrom string, askToMove bool, review string) error {
 	classic.OnPrefsIntent = func(in prefsform.WindowIntent) { program.Send(prefspopup.WindowIntentMsg(in)) }
 	checker.Quit = func() { program.Send(workspace.CloseRequestedMsg{}) }
 	err = appwindow.Run(ctx, appwindow.Options{
-		Program: program, DataDir: appDir, Backdrop: backdrop, Classic: classic,
+		DataDir: appDir, Backdrop: backdrop, Classic: classic,
 		OnCloseRequest: func() { program.Send(workspace.CloseRequestedMsg{}) },
 		// A list double clicked while the app is open is opened in the window that is.
 		OnSecondStart: func(args []string) {
