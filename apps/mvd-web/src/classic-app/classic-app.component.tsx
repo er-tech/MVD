@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { AddMusicWindow } from '../add-music-window'
 import type { ClassicTheme } from '../classic-themes'
 import { DetailsPane, SongsTable, SourcesPane, type SourceAction } from '../classic-panes'
@@ -8,11 +8,11 @@ import { useKeyboardIntents } from './keyboard-intents.hook'
 import { QuestionWindow } from './question-window.component'
 
 interface ClassicAppProps {
-  theme:           ClassicTheme
+  theme:    ClassicTheme
   /** The theme's colour scheme; none for its first, the system's own. */
-  scheme?:         string
-  snapshot:        WorkspaceSnapshot
-  onIntent:        (intent: WorkspaceIntent) => void
+  scheme?:  string
+  snapshot: WorkspaceSnapshot
+  onIntent: (intent: WorkspaceIntent) => void
 }
 
 /** The Edit menu's entries that act on the source chosen, by their label, as its own menu calls them. */
@@ -41,7 +41,13 @@ export function ClassicApp ({ theme, scheme, snapshot, onIntent }: ClassicAppPro
   const selectSource = useCallback((index: number) => onIntent({ kind: 'select-source', index }), [onIntent])
   const runMenu = useCallback((id: string) => onIntent({ kind: 'menu', id }), [onIntent])
   const selectSong = useCallback((index: number) => onIntent({ kind: 'select-song', index }), [onIntent])
-  const tickSong = useCallback((index: number, ticked: boolean) => onIntent({ kind: 'tick-song', index, ticked }), [onIntent])
+  // A row says which song it is by its id, as it is not drawn again when the songs shift; the program counts them.
+  const songs = useRef(snapshot.songs.rows)
+  songs.current = snapshot.songs.rows
+  const tickSong = useCallback((id: string, ticked: boolean) => {
+    const index = songs.current.findIndex(row => row.id === id)
+    if (index !== -1) onIntent({ kind: 'tick-song', index, ticked })
+  }, [onIntent])
 
   return (
     <>

@@ -6,10 +6,14 @@ import { ProgressBar } from './progress-bar.component'
 interface SongsTableProps {
   songs:    SongsSnapshot
   onSelect: (index: number) => void
-  onTick:   (index: number, ticked: boolean) => void
+  onTick:   (id: string, ticked: boolean) => void
 }
 
-/** The songs of the chosen source: ticked to download, with their progress and status. */
+/**
+ * The songs of the chosen source: ticked to download, with their progress and status. A row is
+ * drawn again only when its own song changed: the rows are given as items, and the table keeps what
+ * it built for an item that is the same object as before.
+ */
 export const SongsTable = memo(function SongsTable ({ songs, onSelect, onTick }: SongsTableProps) {
   const selected = songs.rows[songs.selected]?.id
 
@@ -37,15 +41,15 @@ export const SongsTable = memo(function SongsTable ({ songs, onSelect, onTick }:
             <Column className='classic-column classic-column-progress'>Progress</Column>
             <Column className='classic-column'>Status</Column>
           </TableHeader>
-          <TableBody className='classic-table-body'>
-            {songs.rows.map((row, index) => (
-              <Row key={row.id} id={row.id} className='classic-row'>
+          <TableBody className='classic-table-body' items={songs.rows} dependencies={[onTick]}>
+            {row => (
+              <Row id={row.id} className='classic-row'>
                 <Cell className='classic-cell'>
                   <Checkbox
                     className='classic-check'
                     aria-label={`Download ${row.title}`}
                     isSelected={row.ticked}
-                    onChange={ticked => onTick(index, ticked)}
+                    onChange={ticked => onTick(row.id, ticked)}
                   >
                     <span className='classic-check-box' aria-hidden='true' />
                   </Checkbox>
@@ -55,7 +59,7 @@ export const SongsTable = memo(function SongsTable ({ songs, onSelect, onTick }:
                 <Cell className='classic-cell'><ProgressBar progress={row.progress} label={`${row.title} progress`} /></Cell>
                 <Cell className='classic-cell' data-tone={row.tone}>{row.status}</Cell>
               </Row>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
