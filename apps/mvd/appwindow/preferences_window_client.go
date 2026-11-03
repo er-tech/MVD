@@ -35,6 +35,8 @@ type preferencesWindow struct {
 }
 
 // set opens the window when the program has the preferences open and closes it when it has not.
+// It is called after every change of the program, so it leaves an open window as it is: focusing it
+// again each time made the window lose and gain the focus several times a second.
 func (p *preferencesWindow) set(open bool) {
 	// The window's own calls wait for the system's thread, which may be waiting for focus() here
 	// (MVD's window gets the focus back when this one closes), so the lock is never held across them.
@@ -51,9 +53,7 @@ func (p *preferencesWindow) set(open bool) {
 		p.mu.Lock()
 		p.window, p.byProgram = window, byProgram
 		p.mu.Unlock()
-	case open:
-		window.Focus()
-	case window != nil:
+	case window != nil && !open:
 		byProgram.Store(true)
 		window.Close()
 	}
