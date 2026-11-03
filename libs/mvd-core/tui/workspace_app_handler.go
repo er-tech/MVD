@@ -117,11 +117,7 @@ func (a workspaceApp) report() workspaceApp {
 	if style == config.WindowStyleDOS || a.in.Window == nil {
 		return a
 	}
-	snap := a.ws.Window()
-	if a.inPrefs && a.in.Preferences == nil {
-		snap.Covered = &windowsnapshot.Covered{Title: "Preferences"}
-	}
-	a.in.Window(snap)
+	a.in.Window(a.ws.Window())
 
 	return a
 }

@@ -32,16 +32,12 @@ func TestTheTerminalLookIsReportedAndDrawsNoWindow(t *testing.T) {
 	}
 }
 
-func TestAClassicStyleGetsWhatTheWindowShowsAndThePreferencesCoverIt(t *testing.T) {
+func TestAClassicStyleGetsWhatTheWindowShows(t *testing.T) {
 	a, styles, windows := styledApp(t, "mac-os-9")
-	if len(*styles) != 1 || (*styles)[0] != "mac-os-9/default" || len(*windows) != 1 || (*windows)[0].Covered != nil {
+	if len(*styles) != 1 || (*styles)[0] != "mac-os-9/default" || len(*windows) != 1 {
 		t.Fatalf("styles %v, windows %+v", *styles, *windows)
 	}
 	next, _ := a.Update(workspace.PreferencesRequestedMsg{})
-	last := (*windows)[len(*windows)-1]
-	if last.Covered == nil || last.Covered.Title != "Preferences" {
-		t.Errorf("the preferences do not cover the window: %+v", last.Covered)
-	}
 
 	// Another style chosen reaches the host at the next change.
 	app := next.(workspaceApp).closePrefs(false)

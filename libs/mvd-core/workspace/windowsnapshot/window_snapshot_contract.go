@@ -15,9 +15,6 @@ type Snapshot struct {
 	// Question is the question or note open over the window: quitting, a line to write, About,
 	// the keyboard shortcuts.
 	Question *Question `json:"question,omitempty"`
-	// Covered is a screen only the terminal look draws so far (the preferences, a question...),
-	// when one is open over the window: the theme shows the terminal for it.
-	Covered *Covered `json:"covered,omitempty"`
 }
 
 // Activity is what MVD is doing, for the theme's pointer.
@@ -172,9 +169,4 @@ type AddMusic struct {
 	Help    []string   `json:"help"`
 	Problem string     `json:"problem,omitempty"`
 	Buttons []Button   `json:"buttons"`
-}
-
-// Covered is a screen open over the window that only the terminal look draws so far.
-type Covered struct {
-	Title string `json:"title"`
 }

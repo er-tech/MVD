@@ -71,8 +71,8 @@ func TestTheWindowShowsTheSourcesOfTheList(t *testing.T) {
 	if snap.Sources.Heading != "2 sources" || len(snap.Sources.Rows) != 2 {
 		t.Fatalf("sources = %+v", snap.Sources)
 	}
-	if snap.Activity != windowsnapshot.ActivityIdle || snap.Covered != nil {
-		t.Errorf("activity %q, covered %+v", snap.Activity, snap.Covered)
+	if snap.Activity != windowsnapshot.ActivityIdle {
+		t.Errorf("activity %q", snap.Activity)
 	}
 }
 
@@ -109,7 +109,7 @@ func TestARefusedAdditionKeepsTheWindowOpenWithTheReason(t *testing.T) {
 func TestAboutAndTheShortcutsAreNotesOfTheThemeThatOKCloses(t *testing.T) {
 	m := intent(listOf(), windowsnapshot.Intent{Kind: windowsnapshot.IntentMenu, ID: entryAbout})
 	about := m.Window().Question
-	if about == nil || about.ID != windowsnapshot.QuestionAbout || !strings.HasPrefix(about.Lines[1], "Version ") || m.Window().Covered != nil {
+	if about == nil || about.ID != windowsnapshot.QuestionAbout || !strings.HasPrefix(about.Lines[1], "Version ") {
 		t.Fatalf("about = %+v", about)
 	}
 	m = intent(m, windowsnapshot.Intent{Kind: windowsnapshot.IntentQuestionButton, ID: questionOK})
@@ -193,5 +193,19 @@ func TestSongsWaitingForTheirChoiceGiveTheThemedWindowAnAcceptButtonThatAcceptsT
 	}
 	if next := intent(m, windowsnapshot.Intent{Kind: windowsnapshot.IntentButton, ID: entryDownloadAll}); next.done == "" {
 		t.Error("pressing Accept said nothing")
+	}
+}
+
+func TestAnAddressBeingWrittenIsAQuestionOfTheWindow(t *testing.T) {
+	m, _ := listOf("https://www.youtube.com/playlist?list=a").startChange(0)
+	q := m.Window().Question
+	if q == nil || q.Field == nil || q.Field.Text != "https://www.youtube.com/playlist?list=a" {
+		t.Fatalf("question = %+v", q)
+	}
+	next, _ := m.questionIntent(windowsnapshot.Intent{Kind: windowsnapshot.IntentQuestionText, Text: "https://www.youtube.com/playlist?list=b"})
+	next, _ = next.(Model).questionIntent(windowsnapshot.Intent{Kind: windowsnapshot.IntentQuestionButton, ID: questionOK})
+	done := next.(Model)
+	if done.Window().Question != nil || addressesOf(done)[0] != "https://www.youtube.com/playlist?list=b" {
+		t.Errorf("after OK: question %+v, addresses %v", done.Window().Question, addressesOf(done))
 	}
 }

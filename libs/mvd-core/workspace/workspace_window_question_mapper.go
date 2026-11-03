@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"youtube-downloader/libs/mvd-core/lineedit"
 	"youtube-downloader/libs/mvd-core/workspace/closequestion"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 )
@@ -30,6 +31,20 @@ func (m Model) windowQuestion() *windowsnapshot.Question {
 				{ID: questionQuit, Label: closequestion.Answers[closequestion.AnswerQuit], Role: windowsnapshot.RoleOther, Enabled: true},
 				// Keeping the downloads is the safe answer: Return and Esc both choose it.
 				{ID: questionKeep, Label: closequestion.Answers[closequestion.AnswerKeep], Role: windowsnapshot.RoleDefault, Enabled: true},
+			},
+		}
+	case m.inline.on:
+		title := "Change the address"
+		if m.inline.adding {
+			title = "Add a source"
+		}
+
+		return &windowsnapshot.Question{
+			ID: windowsnapshot.QuestionAsk, Title: title, Tone: windowsnapshot.ToneAsk,
+			Field: &windowsnapshot.QuestionField{Label: "Address", Text: m.inline.line.Value()},
+			Buttons: []windowsnapshot.Button{
+				{ID: questionOK, Label: "OK", Role: windowsnapshot.RoleDefault, Enabled: true},
+				{ID: questionCancel, Label: "Cancel", Role: windowsnapshot.RoleCancel, Enabled: true},
 			},
 		}
 	case m.asking != askNone:
@@ -86,6 +101,14 @@ func (m Model) questionIntent(in windowsnapshot.Intent) (tea.Model, tea.Cmd) {
 			return m.quitNow()
 		}
 		m.closing = closequestion.State{}
+	case m.inline.on && in.Kind == windowsnapshot.IntentQuestionText:
+		m.inline.line = lineedit.New(in.Text, max(len([]rune(in.Text))+1, 20))
+	case m.inline.on && in.Kind == windowsnapshot.IntentQuestionButton:
+		if in.ID == questionOK {
+			return m.inlineKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+		}
+
+		return m.stopInline(false), nil
 	case m.asking != askNone && in.Kind == windowsnapshot.IntentQuestionText:
 		m.input.SetValue(in.Text)
 		m.input.CursorEnd()

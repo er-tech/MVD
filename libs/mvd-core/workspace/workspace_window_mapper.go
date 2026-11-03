@@ -25,7 +25,6 @@ func (m Model) Window() windowsnapshot.Snapshot {
 		Status:   m.windowStatus(),
 		Activity: m.windowActivity(),
 		Question: m.windowQuestion(),
-		Covered:  m.windowCovered(),
 	}
 	if s.State == nil {
 		return snap
@@ -166,17 +165,6 @@ func (m Model) windowActivity() windowsnapshot.Activity {
 	}
 
 	return windowsnapshot.ActivityIdle
-}
-
-// windowCovered is the screen open over the window that only the terminal look draws so far.
-func (m Model) windowCovered() *windowsnapshot.Covered {
-	// The questions and notes are dialogs of the theme (see windowQuestion); only the address being
-	// written in its row is the terminal's still.
-	if !m.inline.on || m.windowQuestion() != nil {
-		return nil
-	}
-
-	return &windowsnapshot.Covered{Title: "Change the address"}
 }
 
 // windowSources are the sources of the list.
