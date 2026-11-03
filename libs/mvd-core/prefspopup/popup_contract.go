@@ -23,10 +23,10 @@ type Host struct {
 	StylesWindow bool
 }
 
-// CloseMsg is sent when the person leaves the popup with esc.
+// CloseMsg is sent when the person closes the preferences.
 type CloseMsg struct{}
 
-// SaveMsg is sent when the person asks to save with the keyboard.
+// SaveMsg is sent when the person asks to save the preferences.
 type SaveMsg struct{}
 
 // pickedMsg is the answer of the folder chooser.

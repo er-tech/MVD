@@ -1,13 +1,9 @@
 package workspace
 
 import (
-	"strings"
+	"youtube-downloader/libs/mvd-core/program"
 
-	"github.com/charmbracelet/x/ansi"
 	"testing"
-	downloadpage "youtube-downloader/libs/mvd-core/run/download"
-
-	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/downloadlist"
@@ -58,25 +54,6 @@ func TestAListThatWasStoppedIsNotLoadedAgainUntilItChanges(t *testing.T) {
 	}
 }
 
-func TestALinkAddedWhileLoadingGoesToTheRun(t *testing.T) {
-	run := &addingRun{fakeRun: newFakeRun()}
-	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, downloadlist.New([]string{"https://youtu.be/x"})))
-	m = m.runStartedFor(t, run)
-
-	m, _ = choose(m, entryAddLink)
-	if !m.addOpen {
-		t.Fatal("the window for adding did not open")
-	}
-	m = typeInto(m, "https://youtu.be/second")
-	m, _ = press(m, "enter")
-	if m.addOpen || len(run.added) != 1 || run.added[0] != "https://youtu.be/second" {
-		t.Errorf("window open %v, added %v", m.addOpen, run.added)
-	}
-	if got := addressesOf(m); len(got) != 2 {
-		t.Errorf("the list has %v", got)
-	}
-}
-
 func (m Model) runStartedFor(t *testing.T, run ListRun) Model {
 	t.Helper()
 	next, _ := m.Update(runStartedMsg{run: run})
@@ -105,7 +82,7 @@ func TestALinkCanBeTakenOutWhileTheRunGoesOn(t *testing.T) {
 	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, list))
 	m = m.runStartedFor(t, run)
 
-	next, _ := m.Update(downloadpage.ListEditMsg{Op: "remove", Index: 1})
+	next, _ := m.Update(listEdit{op: "remove", index: 1})
 	m = next.(Model)
 	if len(run.removed) != 1 || run.removed[0] != 1 {
 		t.Errorf("the run was told to remove %v", run.removed)
@@ -125,36 +102,6 @@ func (busyRun) Sources() []engine.PlaylistSource {
 	return []engine.PlaylistSource{{Index: 0, URL: "https://youtu.be/a"}}
 }
 
-func TestClosingAsksOnlyWhileSongsAreDownloading(t *testing.T) {
-	run := busyRun{&addingRun{fakeRun: newFakeRun()}}
-	list := downloadlist.New([]string{"https://youtu.be/a"})
-	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, list))
-	m = m.runStartedFor(t, run)
-	m.dl.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1}}})
-
-	// Songs wait to be chosen: nothing downloads, so nothing is asked.
-	m.dl.State.Apply(engine.EvEntryState{Entry: 0, State: engine.StatePlanned, TargetID: "abc12345678"})
-	next, cmd := m.Update(CloseRequestedMsg{})
-	if next.(Model).closing.On || cmd == nil {
-		t.Fatalf("a close with nothing downloading asked %v, cmd %v", next.(Model).closing.On, cmd != nil)
-	}
-
-	// A song downloads: the app asks, in its own screen.
-	m.dl.State.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDownloading, TargetID: "abc12345678"})
-	next, cmd = m.Update(CloseRequestedMsg{})
-	m = next.(Model)
-	if !m.closing.On || cmd != nil {
-		t.Fatalf("a close while downloading did not ask")
-	}
-	if screen := ansi.Strip(m.render()); !strings.Contains(screen, "1 song is still downloading") || !strings.Contains(screen, "Keep downloading") {
-		t.Errorf("the question is not on the screen:\n%s", screen)
-	}
-	next, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if next.(Model).closing.On {
-		t.Error("esc did not keep the downloads")
-	}
-}
-
 func TestTheCloseQuestionGoesWhenTheLastSongIsDone(t *testing.T) {
 	run := busyRun{&addingRun{fakeRun: newFakeRun()}}
 	list := downloadlist.New([]string{"https://youtu.be/a"})
@@ -169,31 +116,8 @@ func TestTheCloseQuestionGoesWhenTheLastSongIsDone(t *testing.T) {
 	}
 
 	m.dl.State.Apply(engine.EvEntryState{Entry: 0, State: engine.StateDone, TargetID: "abc12345678"})
-	next, cmd := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	next, cmd := m.Update(program.WindowSizeMsg{Width: 100, Height: 30})
 	if next.(Model).closing.On || cmd == nil {
 		t.Errorf("the question stayed after the last song finished (on %v, cmd %v)", next.(Model).closing.On, cmd != nil)
-	}
-}
-
-func TestShiftAndTheArrowsTickSongsEvenThoughTheMenuHasThemForMovingLinks(t *testing.T) {
-	run := busyRun{&addingRun{fakeRun: newFakeRun()}}
-	list := downloadlist.New([]string{"https://youtu.be/a"})
-	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, list))
-	m = m.runStartedFor(t, run)
-	entries := []engine.EntryInfo{{ID: 0, Playlist: 0, Index: 1, Title: "one"}, {ID: 1, Playlist: 0, Index: 2, Title: "two"}, {ID: 2, Playlist: 0, Index: 3, Title: "three"}}
-	m.dl.State.Apply(engine.EvPlaylistListed{Playlist: 0, Title: "A", Entries: entries})
-	for i := range entries {
-		m.dl.State.Apply(engine.EvEntryState{Entry: i, State: engine.StatePlanned, TargetID: "abc12345678"})
-	}
-	press := func(m Model, key tea.KeyPressMsg) Model {
-		next, _ := m.Update(key)
-
-		return next.(Model)
-	}
-	m = press(m, tea.KeyPressMsg{Code: tea.KeyTab})
-	m = press(m, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift})
-	m = press(m, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift})
-	if got := strings.Count(ansi.Strip(m.render()), "[x]"); got != 4 { // the three songs and the box of the heading
-		t.Errorf("%d boxes are ticked, want 4:\n%s", got, ansi.Strip(m.render()))
 	}
 }

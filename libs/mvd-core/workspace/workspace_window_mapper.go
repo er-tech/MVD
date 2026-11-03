@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/run/downloadsession"
 	"youtube-downloader/libs/mvd-core/run/downloadsnapshot"
 	"youtube-downloader/libs/mvd-core/songlist"
@@ -52,7 +51,7 @@ func (m Model) windowTitle() string {
 
 // windowMenus are the menus of the bar, with what can be chosen now and each entry's keys.
 func (m Model) windowMenus() []windowsnapshot.Menu {
-	menus := m.bar.Menus()
+	menus := menus()
 	headings := make([]string, len(menus))
 	for i, menu := range menus {
 		headings[i] = menu.Name
@@ -74,7 +73,7 @@ func (m Model) windowMenus() []windowsnapshot.Menu {
 			}
 			entries = append(entries, windowsnapshot.MenuEntry{
 				ID: entry.Name, Label: entry.Name, Mnemonic: entryLetters[j],
-				Shortcut: windowsnapshot.ShortcutOf(entry.Shortcut), Enabled: m.bar.Enabled(entry.Name),
+				Shortcut: windowsnapshot.ShortcutOf(entry.Shortcut), Enabled: m.enabled(entry.Name),
 				SeparatorBefore: separator,
 			})
 			separator = false
@@ -97,7 +96,7 @@ func (m Model) windowButtons() []windowsnapshot.Button {
 	}
 	for i, b := range buttons {
 		role := windowsnapshot.RoleOther
-		if !accept && buttonKind(buttons, i) == dialog.PillPrimary {
+		if !accept && isMain(buttons, i) {
 			role = windowsnapshot.RoleDefault
 		}
 		one := windowsnapshot.Button{ID: b.entry, Label: b.label, Role: role, Enabled: !b.disabled}

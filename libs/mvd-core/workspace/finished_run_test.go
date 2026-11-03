@@ -6,10 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/x/ansi"
-
 	"youtube-downloader/libs/mvd-core/engine"
-	"youtube-downloader/libs/mvd-core/menubar"
 )
 
 // finishRun makes the run of the model look as one that has ended: its songs are in the state
@@ -28,7 +25,7 @@ func finishRun(t *testing.T, m Model, done, failed int) Model {
 	}
 	state.Apply(engine.EvIdle{})
 
-	return m.keepRoomForButtons() // what the next Update of the app does
+	return m
 }
 
 func entriesOf(n int) []engine.EntryInfo {
@@ -55,7 +52,7 @@ func TestARunThatIsDownloadingIsStillRunningAndNewIsRefused(t *testing.T) {
 	if m.finished() || !m.active() {
 		t.Fatal("a run with work to do is not finished")
 	}
-	next, _ := m.Update(menubar.SelectedMsg{Name: entryNew})
+	next, _ := m.Update(entryChosenMsg{entryNew})
 	if got := next.(Model).notice; !strings.Contains(got, "Stop the downloads") {
 		t.Errorf("starting a new list during a run says %q", got)
 	}
@@ -87,7 +84,7 @@ func TestAFinishedRunWithFailuresOffersRetryToo(t *testing.T) {
 func TestANewListIsAllowedAfterARunFinishedWithoutPressingStop(t *testing.T) {
 	m, fake := started(t)
 	m = finishRun(t, m, 1, 0)
-	next, _ := m.Update(menubar.SelectedMsg{Name: entryNew})
+	next, _ := m.Update(entryChosenMsg{entryNew})
 	m = next.(Model)
 	if m.running() || !fake.closed {
 		t.Errorf("the finished run was not closed: running %v closed %v", m.running(), fake.closed)
@@ -103,7 +100,7 @@ func TestANewListIsAllowedAfterARunFinishedWithoutPressingStop(t *testing.T) {
 func TestOpeningAListIsAllowedAfterARunFinished(t *testing.T) {
 	m, _ := started(t)
 	m = finishRun(t, m, 1, 0)
-	next, _ := m.Update(menubar.SelectedMsg{Name: entryOpen})
+	next, _ := m.Update(entryChosenMsg{entryOpen})
 	m = next.(Model)
 	if m.running() || strings.Contains(m.notice, "Stop the downloads") {
 		t.Errorf("opening a list after a finished run: running %v notice %q", m.running(), m.notice)
@@ -116,7 +113,7 @@ func TestOpeningAListIsAllowedAfterARunFinished(t *testing.T) {
 func TestAddingALinkAfterARunFinishedOpensTheWindowOnTheList(t *testing.T) {
 	m, _ := started(t)
 	m = finishRun(t, m, 1, 0)
-	next, _ := m.Update(menubar.SelectedMsg{Name: entryAddLink})
+	next, _ := m.Update(entryChosenMsg{entryAddLink})
 	m = next.(Model)
 	if m.running() || !m.addOpen {
 		t.Errorf("running %v, window open %v", m.running(), m.addOpen)
@@ -126,7 +123,7 @@ func TestAddingALinkAfterARunFinishedOpensTheWindowOnTheList(t *testing.T) {
 func TestStartAgainEndsTheFinishedRunAndBeginsAnother(t *testing.T) {
 	m, fake := started(t)
 	m = finishRun(t, m, 1, 0)
-	next, cmd := m.Update(menubar.SelectedMsg{Name: entryStart})
+	next, cmd := m.Update(entryChosenMsg{entryStart})
 	m = next.(Model)
 	if !fake.closed {
 		t.Error("the finished run was not closed")
@@ -136,80 +133,31 @@ func TestStartAgainEndsTheFinishedRunAndBeginsAnother(t *testing.T) {
 	}
 }
 
-func TestAFinishedRunSaysHowItWentAndWhereTheVideosAre(t *testing.T) {
-	m, _ := started(t)
-	m = finishRun(t, m, 3, 1)
-	screen := screenOf(m)
-	for _, want := range []string{"✓ 3 downloaded", "✗ 1 failed", "Videos in", menubar.ShortcutLabel("Ctrl+Shift+O")} {
-		if !strings.Contains(screen, want) {
-			t.Errorf("the summary lacks %q:\n%s", want, screen)
-		}
-	}
-}
-
-func TestTheSummaryKeepsTheEndOfALongFolder(t *testing.T) {
-	m, _ := started(t)
-	m = finishRun(t, m, 1, 0)
-	m.cfg.OutputDir = `C:\Users\someone\AppData\Local\Temp\a\very\long\path\that\goes\on\and\on\to\MVD-Videos`
-	if got := m.summaryLine(); !strings.Contains(ansi.Strip(got), `MVD-Videos`) {
-		t.Errorf("the end of the folder is lost: %q", ansi.Strip(got))
-	}
-}
-
 func TestOpenFolderAsksTheHostAndSaysWhenThereIsNone(t *testing.T) {
 	m, _ := started(t)
 	dir := t.TempDir()
 	m.cfg.OutputDir = dir
 	var opened string
 	m.host.OpenFolder = func(p string) error { opened = p; return nil }
-	next, _ := m.Update(menubar.SelectedMsg{Name: entryOpenFolder})
+	next, _ := m.Update(entryChosenMsg{entryOpenFolder})
 	if opened != dir {
 		t.Errorf("the host was asked to open %q, want %q", opened, dir)
 	}
 
 	m = next.(Model)
 	m.cfg.OutputDir = dir + "-not-there"
-	next, _ = m.Update(menubar.SelectedMsg{Name: entryOpenFolder})
+	next, _ = m.Update(entryChosenMsg{entryOpenFolder})
 	if got := next.(Model).caution; !strings.Contains(got, "made when the first download starts") {
 		t.Errorf("a folder that does not exist yet says %q", got)
 	}
 
 	m.host.OpenFolder = nil
 	m.cfg.OutputDir = dir
-	next, _ = m.Update(menubar.SelectedMsg{Name: entryOpenFolder})
+	next, _ = m.Update(entryChosenMsg{entryOpenFolder})
 	if got := next.(Model).caution; !strings.Contains(got, "The videos are in") {
 		t.Errorf("without a host it says %q", got)
 	}
 	_ = os.Remove(dir)
-}
-
-func TestWhenARunEndsWhatWasSaidAtItsStartMakesRoomForHowItWent(t *testing.T) {
-	m, _ := started(t)
-	m.done = "Kept this list as a draft: somewhere"
-	m = finishRun(t, m, 1, 0)
-	next, _ := m.Update(saveTickMsg{})
-	m = next.(Model)
-	if m.done != "" {
-		t.Errorf("the old message is still there: %q", m.done)
-	}
-	if screen := screenOf(m); !strings.Contains(screen, "1 downloaded") {
-		t.Errorf("the summary is not shown: %s", screen)
-	}
-}
-
-func TestTheSummaryMentionsALinkThatCouldNotBeReadAtAll(t *testing.T) {
-	m, _ := started(t)
-	m = finishRun(t, m, 1, 0)
-	state := m.dl.State
-	state.Apply(engine.EvPlaylistAdded{Source: engine.PlaylistSource{Index: len(state.Playlists), URL: "https://bad"}})
-	state.Apply(engine.EvPlaylistFailed{Playlist: len(state.Playlists) - 1, Err: "not a valid URL"})
-	state.Apply(engine.EvIdle{})
-	if got := ansi.Strip(m.summaryLine()); !strings.Contains(got, "1 source could not be read") || !strings.Contains(got, "1 downloaded") {
-		t.Errorf("the summary says %q", got)
-	}
-	if plural("source", 2) != "sources" || plural("source", 1) != "source" {
-		t.Error("the plural is wrong")
-	}
 }
 
 func TestAStopSaysHowManySongsWereSavedAndHowManyWereLeft(t *testing.T) {
@@ -223,18 +171,6 @@ func TestAStopSaysHowManySongsWereSavedAndHowManyWereLeft(t *testing.T) {
 	next, _ := m.Update(runClosedMsg{})
 	if got := next.(Model).done; !strings.Contains(got, "Stopped: 2 saved, 3 not downloaded") {
 		t.Errorf("a stop says %q", got)
-	}
-}
-
-func TestStoppingShowsInTheHeaderForAsLongAsTheDownloadsAreHeld(t *testing.T) {
-	m, run := started(t)
-	m = m.togglePause()
-	if !run.paused || !strings.Contains(screenOf(m), "PAUSED") {
-		t.Errorf("paused %v, screen:\n%s", run.paused, screenOf(m))
-	}
-	m = m.togglePause()
-	if strings.Contains(screenOf(m), "PAUSED") {
-		t.Error("it still says PAUSED after the downloads went on")
 	}
 }
 
@@ -258,14 +194,14 @@ func TestRetryFailedWaitsForASongThatFailed(t *testing.T) {
 
 func TestANewListSaysWhereTheSavedOneWentAndNothingForAListThatWasNeverSaved(t *testing.T) {
 	m := listOf("https://a")
-	next, _ := m.Update(menubar.SelectedMsg{Name: entryNew})
+	next, _ := m.Update(entryChosenMsg{entryNew})
 	if got := next.(Model).done; got != "" {
 		t.Errorf("a list that was never saved says %q", got)
 	}
 	if err := m.session.Save(filepath.Join(t.TempDir(), "mix.mvd")); err != nil {
 		t.Fatal(err)
 	}
-	next, _ = m.Update(menubar.SelectedMsg{Name: entryNew})
+	next, _ = m.Update(entryChosenMsg{entryNew})
 	if got := next.(Model).done; !strings.Contains(got, "mix.mvd is kept") {
 		t.Errorf("a saved list is not said to be kept: %q", got)
 	}

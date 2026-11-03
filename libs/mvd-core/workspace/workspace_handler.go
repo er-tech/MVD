@@ -1,31 +1,24 @@
 package workspace
 
 import (
-	"youtube-downloader/libs/mvd-core/workspace/addsource"
-	"youtube-downloader/libs/mvd-core/workspace/listhistory"
-	"youtube-downloader/libs/mvd-core/workspace/closequestion"
-	"youtube-downloader/libs/mvd-core/workspace/linequestion"
-	"youtube-downloader/libs/mvd-core/workspace/runcontrol"
-	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+	"youtube-downloader/libs/mvd-core/program"
+	"youtube-downloader/libs/mvd-core/workspace/addsource"
+	"youtube-downloader/libs/mvd-core/workspace/closequestion"
+	"youtube-downloader/libs/mvd-core/workspace/linequestion"
+	"youtube-downloader/libs/mvd-core/workspace/listhistory"
+	"youtube-downloader/libs/mvd-core/workspace/runcontrol"
+	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 
-	"charm.land/bubbles/v2/textinput"
-	tea "charm.land/bubbletea/v2"
-
-	"youtube-downloader/libs/mvd-core/cells"
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/engine"
-	"youtube-downloader/libs/mvd-core/menubar"
 	"youtube-downloader/libs/mvd-core/playlistfile"
-	"youtube-downloader/libs/mvd-core/pointer"
-	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 	"youtube-downloader/libs/mvd-core/run/downloadsession"
-	"youtube-downloader/libs/mvd-core/screenview"
 )
 
 type (
@@ -46,6 +39,8 @@ type (
 	}
 	// updateCheckedMsg carries the line the check for a newer version left to show.
 	updateCheckedMsg struct{ line string }
+	// entryChosenMsg is a menu entry chosen once the run has wound down.
+	entryChosenMsg struct{ name string }
 	// saveTickMsg is the beat at which the list is brought up to date with the run.
 	saveTickMsg time.Time
 	// toolsTickMsg is the beat at which the state of the tools is looked at again, while they
@@ -83,12 +78,11 @@ type Model struct {
 	cfg     config.Config
 	session *downloadlist.Session
 
-	bar menubar.Model
-	// dl is what the download screen shows and does: the workspace owns it, whichever look draws
-	// it. screen is the terminal's view of it, holding only what the terminal knows, and is used
-	// through view and show.
+	// disabled are the menu entries that cannot be chosen now, by name.
+	disabled map[string]bool
+	// dl is what the window shows and does, and events are what the run attached to it reports.
 	dl     downloadsession.Session
-	screen downloadpage.Model
+	events <-chan interface{}
 
 	run ListRun
 	// life is whether the run is being started or wound down, and what waits for that.
@@ -98,29 +92,27 @@ type Model struct {
 	loadedKey string
 
 	about bool
-	// add is the window for adding music, when addOpen; addBoxes are its text fields, by field.
-	add      addsource.State
-	addOpen  bool
-	addBoxes [addsource.FieldSong + 1]textinput.Model
+	// add is the window for adding music, when addOpen.
+	add     addsource.State
+	addOpen bool
 	// closing is the question asked before the app closes while songs download.
 	closing closequestion.State
 	// shortcuts is whether the Keyboard shortcuts window is showing, and shortcutsScroll how far
 	// down its lines it is.
 	shortcuts       bool
 	shortcutsScroll int
-	// inline is the address being written in its row; clicked is the last click, for double clicks.
-	inline  inlineEdit
-	clicked lastClick
-	// hoverX and hoverY are where the pointer last was, for the buttons to light up.
-	hoverX, hoverY int
+	// inline is the address being written, as a question of the window.
+	inline inlineEdit
 
 	// history is the lists as they were before the changes made to it, for undo and redo.
 	history listhistory.History
 	// changing is the playlist whose address the question at the bottom is asking for.
 	changing int
 
-	asking purpose
-	input  textinput.Model
+	// asking is what the question of the window asks for, askPrompt what it says and askText what
+	// was written.
+	asking             purpose
+	askPrompt, askText string
 
 	notice string
 	// done is what an action that worked says, and caution what it warns of; both go away at the
@@ -136,24 +128,16 @@ func New(host Host, cfg config.Config, list *downloadlist.Session) Model {
 	if list == nil {
 		list = downloadlist.New(nil)
 	}
-	bar := menubar.New(menubar.WithMenus(menus()...), menubar.WithTitle("MVD"))
-	m := Model{hoverX: -1, hoverY: -1, host: host, cfg: cfg, session: list, bar: bar, screen: downloadpage.NewHosted()}
-	m.dl = m.screen.Session()
+	m := Model{host: host, cfg: cfg, session: list, dl: downloadsession.NewHosted()}
 	m.dl.Show(list.Preview())
 	return m
 }
 
-// view is the terminal's screen showing the session the workspace owns.
-func (m Model) view() downloadpage.Model { return m.screen.WithSession(m.dl) }
-
-// show takes back the session a screen changed, along with the screen's own terminal state.
-func (m *Model) show(v downloadpage.Model) { m.screen, m.dl = v, v.Session() }
-
 // Session is the list that is open.
 func (m Model) Session() *downloadlist.Session { return m.session }
 
-// Init returns the first command of the screen and the tick that checks the tools.
-func (m Model) Init() tea.Cmd { return tea.Batch(m.screen.Init(), m.toolsTick()) }
+// Init returns the tick that checks the tools.
+func (m Model) Init() program.Cmd { return m.toolsTick() }
 
 func (m Model) running() bool { return m.run != nil }
 
@@ -181,7 +165,7 @@ func (m Model) facts() runcontrol.Facts {
 	f := runcontrol.Facts{HasRun: m.run != nil, Starting: m.life.Starting, Stopping: m.life.Stopping}
 	if m.run != nil {
 		f.Paused = m.run.Paused()
-		_, f.CanAddLinks = m.run.(downloadpage.SourceAdder)
+		_, f.CanAddLinks = m.run.(downloadsession.SourceAdder)
 	}
 	if state := m.dl.State; state != nil {
 		f.Idle, f.AllListed, f.Tally = state.Idle, state.AllListed(), state.Tally()
@@ -195,7 +179,7 @@ func (m Model) addable() bool { return m.facts().Addable() }
 
 // addToRun gives the run more links, and keeps them in the list.
 func (m Model) addToRun(links []string) Model {
-	adder, ok := m.run.(downloadpage.SourceAdder)
+	adder, ok := m.run.(downloadsession.SourceAdder)
 	if !ok || len(links) == 0 {
 		return m
 	}
@@ -211,7 +195,7 @@ func (m Model) addToRun(links []string) Model {
 }
 
 // Update handles msg and returns the next model and its command. It also clears notices when a run ends, quits when nothing is left to lose, and loads songs.
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg program.Msg) (program.Model, program.Cmd) {
 	next, cmd := m.update(msg)
 	if ws, ok := next.(Model); ok {
 		// When a run ends, what was said while it began (a draft was kept...) gives way to how it went.
@@ -223,40 +207,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// The question is about songs that would be lost: once none is left, there is nothing to ask.
 		if ws.closing.On && ws.downloading() == 0 {
-			var quit tea.Cmd
+			var quit program.Cmd
 			ws, quit = ws.quitNow()
-			cmd = tea.Batch(cmd, quit)
+			cmd = program.Batch(cmd, quit)
 		}
 		if ws.wantsLoading() {
-			var load tea.Cmd
+			var load program.Cmd
 			ws, load = ws.start(true)
-			cmd = tea.Batch(cmd, load)
+			cmd = program.Batch(cmd, load)
 		}
-		next = ws.refreshMenus().refreshRunMenus().keepRoomForButtons()
+		next = ws.refreshMenus()
 	}
 	return next, cmd
 }
 
-func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
-	case tea.KeyPressMsg, tea.MouseClickMsg, WindowIntentMsg:
+func (m Model) update(msg program.Msg) (program.Model, program.Cmd) {
+	if _, ok := msg.(WindowIntentMsg); ok {
 		m.done, m.caution, m.notice = "", "", ""
 	}
-	if mouse, ok := msg.(tea.MouseMsg); ok {
-		m.hoverX, m.hoverY = mouse.Mouse().X, mouse.Mouse().Y
-		if _, moved := msg.(tea.MouseMotionMsg); moved && m.bar.Open() < 0 {
-			m.bar, _ = m.bar.Update(msg) // the heading under the pointer lights up
-		}
-	}
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
+	case program.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.bar.SetSize(msg.Width, max(m.bar.ContentHeight(), 1))
-		m.screen = m.screen.Resize(msg.Width, max(msg.Height-topRows, 0))
 		return m, nil
 
-	case menubar.SelectedMsg:
-		return m.choose(msg.Name)
+	case entryChosenMsg:
+		return m.choose(msg.name)
 
 	case WindowIntentMsg:
 		return m.windowIntent(windowsnapshot.Intent(msg))
@@ -267,7 +242,8 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case runClosedMsg:
 		left := m.dl.State.Tally()
 		m.run = nil
-		m.show(m.view().Detach().WithState(m.session.Preview()))
+		m.detach()
+		m.dl.Show(m.session.Preview())
 		if unfinished := left.Queued + left.Running; unfinished > 0 && !msg.quit {
 			m.done = fmt.Sprintf("Stopped: %d saved, %d not downloaded. Load the playlists again to carry on.", left.Done, unfinished)
 		}
@@ -278,6 +254,15 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.Update(next)
 		}
 		return m, nil
+
+	case listEdit:
+		return m.editList(msg)
+
+	case evMsg:
+		return m.runEvents(msg)
+
+	case evClosed:
+		return m.runEventsEnded(msg), nil
 
 	case toolsTickMsg:
 		return m, m.toolsTick()
@@ -320,119 +305,15 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m.answered(msg.purpose, msg.path)
 
-	case downloadpage.ListEditMsg:
-		return m.editList(msg)
-
-	case tea.ClipboardMsg:
-		if m.addOpen {
-			return m.addPaste(msg.Content), nil
-		}
-		return m.pasted(msg.Content), nil
-
-	case tea.PasteMsg:
-		if m.addOpen {
-			return m.addPaste(msg.Content), nil
-		}
-		if m.inline.on {
-			return m.pasteInline(msg.Content), nil
-		}
-		if m.asking == askNone {
-			return m.addAddresses(msg.Content), nil
-		}
-
-	case downloadpage.OpenVideoMsg:
-		if m.host.Open != nil {
-			if err := m.host.Open(msg.URL); err != nil {
-				m.notice = "Cannot open the browser: " + err.Error()
-			}
-		}
-		return m, nil
-
-	case downloadpage.RunEndedMsg:
-		return m, nil
-
 	case CloseRequestedMsg:
 		return m.closeRequested()
 	}
 
-	if key, ok := msg.(tea.KeyPressMsg); ok {
-		if m.addOpen {
-			return m.addKey(key)
-		}
-		if m.closing.On {
-			return m.closeKey(key)
-		}
-		if m.about {
-			if name := key.String(); name == "esc" || name == "enter" || name == "space" || name == "q" {
-				m.about = false
-			}
-			return m, nil
-		}
-		if m.shortcuts {
-			return m.shortcutsKey(key), nil
-		}
-		if m.asking != askNone {
-			return m.answer(key)
-		}
-		if m.life.Busy() {
-			return m, nil
-		}
-		if m.inline.on && m.bar.Open() < 0 {
-			return m.inlineKey(key)
-		}
-		bar, cmd := m.bar.Update(msg)
-		m.bar = bar
-		if cmd != nil || m.bar.Open() >= 0 {
-			return m, cmd
-		}
-		return m.toScreen(msg)
-	}
-
-	if mouse, ok := msg.(tea.MouseMsg); ok && m.bar.Open() < 0 {
-		if next, cmd, handled := m.popupMouse(mouse); handled {
-			return next, cmd
-		}
-		next, cmd, handled := m.listMouse(mouse)
-		if handled {
-			return next, cmd
-		}
-		m = next
-	}
-	if click, ok := msg.(tea.MouseClickMsg); ok && m.bar.Open() < 0 && click.Button == tea.MouseLeft {
-		if next, cmd, handled := m.toolbarClick(click.X, click.Y); handled {
-			return next, cmd
-		}
-	}
-	if click, ok := msg.(tea.MouseClickMsg); ok && (click.Y == 0 || m.bar.Open() >= 0) {
-		bar, cmd := m.bar.Update(msg)
-		m.bar = bar
-		return m, cmd
-	}
-	if downloadpage.IsLeftover(msg) {
-		// The screen's own events and ticks go to it whatever is open: if one is taken by the menu
-		// the screen is never asked for the next, and the run's events pile up until it stops.
-		return m.toScreen(msg)
-	}
-	if m.bar.Open() >= 0 {
-		bar, cmd := m.bar.Update(msg)
-		m.bar = bar
-		return m, cmd
-	}
-	return m.toScreen(msg)
-}
-
-// toScreen gives a message to the download screen, which sits under the menu bar and the toolbar.
-func (m Model) toScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if mouse, ok := msg.(tea.MouseMsg); ok {
-		msg = pointer.Shift(mouse, 0, -topRows)
-	}
-	next, cmd := m.view().Update(msg)
-	m.show(next.(downloadpage.Model))
-	return m, cmd
+	return m, nil
 }
 
 // choose does what a menu entry says.
-func (m Model) choose(name string) (tea.Model, tea.Cmd) {
+func (m Model) choose(name string) (program.Model, program.Cmd) {
 	if m.life.Busy() {
 		return m, nil
 	}
@@ -447,14 +328,14 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		m = m.stopInline(false)
 		if m.running() {
 			if m.holdsOnlyTheList() {
-				return m.stopThen(menubar.SelectedMsg{Name: name})
+				return m.stopThen(entryChosenMsg{name})
 			}
 			m.notice = "Stop the downloads before starting a new list"
 			return m, nil
 		}
 		kept := m.session.Path()
 		m.session = downloadlist.New(nil)
-		m.show(m.view().WithState(m.session.Preview()))
+		m.dl.Show(m.session.Preview())
 		m.notice = ""
 		if kept != "" {
 			m.done = "New list. " + filepath.Base(kept) + " is kept: File > Open brings it back"
@@ -462,19 +343,19 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 	case entryOpen:
 		if m.running() {
 			if m.holdsOnlyTheList() {
-				return m.stopThen(menubar.SelectedMsg{Name: name})
+				return m.stopThen(entryChosenMsg{name})
 			}
 			m.notice = "Stop the downloads before opening another list"
 			return m, nil
 		}
 		if m.host.PickFile != nil {
 			pick, dir := m.host.PickFile, m.host.ListDir
-			return m, func() tea.Msg {
+			return m, func() program.Msg {
 				path, chosen, err := pick(dir)
 				return filePickedMsg{askOpen, path, chosen, err}
 			}
 		}
-		return m.ask(askOpen, "Open the list", m.defaultPath()), textinput.Blink
+		return m.ask(askOpen, "Open the list", m.defaultPath()), nil
 	case entrySave:
 		if m.session.Path() == "" {
 			return m.askWhereToSave(askSaveAs)
@@ -485,7 +366,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 	case entryUndo, entryRedo, entryCut, entryCopy, entryPaste, entryDelete, entryMoveUp, entryMoveDown:
 		return m.editCommand(name)
 	case entryPreferences:
-		return m, func() tea.Msg { return PreferencesRequestedMsg{} }
+		return m, func() program.Msg { return PreferencesRequestedMsg{} }
 	case entryAbout:
 		m.about = true
 	case entryOpenFolder:
@@ -503,7 +384,7 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 		}
 		m.notice = "Looking for a newer version…"
 		check := m.host.CheckForUpdate
-		return m, func() tea.Msg { return updateCheckedMsg{line: check()} }
+		return m, func() program.Msg { return updateCheckedMsg{line: check()} }
 	case entryQuit:
 		return m.closeRequested()
 	}
@@ -512,12 +393,12 @@ func (m Model) choose(name string) (tea.Model, tea.Cmd) {
 
 // askWhereToSave shows the file window for a list to be saved, or asks for the path on the
 // bottom line when the host has none.
-func (m Model) askWhereToSave(p purpose) (Model, tea.Cmd) {
+func (m Model) askWhereToSave(p purpose) (Model, program.Cmd) {
 	if m.host.SaveFile == nil {
-		return m.ask(p, "Save the list as", m.defaultPath()), textinput.Blink
+		return m.ask(p, "Save the list as", m.defaultPath()), nil
 	}
 	save, dir, name := m.host.SaveFile, filepath.Dir(m.defaultPath()), filepath.Base(m.defaultPath())
-	return m, func() tea.Msg {
+	return m, func() program.Msg {
 		path, chosen, err := save(dir, name)
 		return filePickedMsg{p, path, chosen, err}
 	}
@@ -535,37 +416,27 @@ func (m *Model) save(path string) {
 		m.notice = "Cannot save the list: " + err.Error()
 		return
 	}
-	m.done = "Saved " + cells.TruncateMiddle(m.session.Path(), max(m.width-14, 20))
+	m.done = "Saved " + m.session.Path()
 }
 
-// ask opens the one-line question at the bottom of the screen.
+// ask opens the one-line question of the window.
 func (m Model) ask(p purpose, prompt, value string) Model {
-	in := textinput.New()
-	in.Prompt = prompt + ": "
-	in.SetValue(value)
-	in.CursorEnd()
-	in.Focus()
-	m.asking, m.input = p, in
+	m.asking, m.askPrompt, m.askText = p, prompt, value
 	return m
 }
 
-func (m Model) answer(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	outcome, text := linequestion.Decide(key.String(), m.input.Value())
+// answer ends the question with what was written: with nothing written it only closes.
+func (m Model) answer() (program.Model, program.Cmd) {
+	outcome, text := linequestion.Decide("enter", m.askText)
 	p := m.asking
-	switch outcome {
-	case linequestion.Cancelled, linequestion.Empty:
-		m.asking = askNone
+	m.asking = askNone
+	if outcome != linequestion.Answered {
 		return m, nil
-	case linequestion.Answered:
-		m.asking = askNone
-		return m.answered(p, text)
 	}
-	in, cmd := m.input.Update(key)
-	m.input = in
-	return m, cmd
+	return m.answered(p, text)
 }
 
-func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
+func (m Model) answered(p purpose, text string) (program.Model, program.Cmd) {
 	switch p {
 	case askOpen:
 		list, err := downloadlist.Open(withExtension(text))
@@ -574,8 +445,8 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.session = list
-		m.show(m.view().WithState(list.Preview()))
-		m.done = "Opened " + cells.TruncateMiddle(list.Path(), max(m.width-14, 20))
+		m.dl.Show(list.Preview())
+		m.done = "Opened " + list.Path()
 	case askSaveAs:
 		m.save(withExtension(text))
 	case askSaveThenStart, askSaveThenReview:
@@ -587,7 +458,7 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 	case askAddLink, askChangeLink:
 		if reason := notALink(text); reason != "" {
 			m.notice = reason
-			return m.ask(p, linequestion.LinkPrompt(p == askChangeLink), text), textinput.Blink // asked again, with what was typed
+			return m.ask(p, linequestion.LinkPrompt(p == askChangeLink), text), nil // asked again, with what was typed
 		}
 		links, _ := parseLinks(text)
 		return m.answeredLink(p, strings.Join(links, "\n"))
@@ -597,7 +468,7 @@ func (m Model) answered(p purpose, text string) (tea.Model, tea.Cmd) {
 
 // answeredLink does what a link written on the bottom line says: it adds the link to the
 // run, or to the list, or changes the one being changed.
-func (m Model) answeredLink(p purpose, text string) (tea.Model, tea.Cmd) {
+func (m Model) answeredLink(p purpose, text string) (program.Model, program.Cmd) {
 	switch p {
 	case askAddLink:
 		if m.addable() {
@@ -630,7 +501,7 @@ func (m *Model) syncFile() {
 
 // start begins the downloads of the list, or its review. A list with no file is saved
 // first, so what happens to it is never lost.
-func (m Model) start(review bool) (Model, tea.Cmd) {
+func (m Model) start(review bool) (Model, program.Cmd) {
 	if refusal := runcontrol.Refusal(m.facts(), len(m.session.Sources()), m.host.Start != nil); refusal != "" {
 		m.notice = refusal
 		return m, nil
@@ -659,7 +530,7 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 		if m.host.SaveFile != nil {
 			return m.askWhereToSave(p)
 		}
-		return m.ask(p, "Save the list as, then it starts", m.defaultPath()), textinput.Blink
+		return m.ask(p, "Save the list as, then it starts", m.defaultPath()), nil
 	}
 	if err := os.MkdirAll(m.cfg.OutputDir, 0o755); err != nil {
 		m.notice = "Cannot create the download folder: " + err.Error()
@@ -669,23 +540,23 @@ func (m Model) start(review bool) (Model, tea.Cmd) {
 	m.life.BeginStart()
 	m.notice = ""
 	host, cfg := m.host, m.cfg
-	return m, func() tea.Msg {
+	return m, func() program.Msg {
 		run, err := host.Start(cfg, sources, plan, review)
 		return runStartedMsg{run: run, err: err, review: review}
 	}
 }
 
-func (m Model) runStarted(msg runStartedMsg) (tea.Model, tea.Cmd) {
+func (m Model) runStarted(msg runStartedMsg) (program.Model, program.Cmd) {
 	m.life.Started()
 	if msg.err != nil {
 		m.notice = "Cannot start the downloads: " + msg.err.Error()
 		return m, nil
 	}
 	m.run = msg.run
-	screen, cmd := m.view().Attach(msg.run)
-	m.show(screen.WithPaused(msg.run.Paused()))
-	cmds := []tea.Cmd{cmd, saveTick()}
-	return m, tea.Batch(cmds...)
+	m.dl.Attach(msg.run)
+	m.events = msg.run.Events()
+	m.dl.Paused = msg.run.Paused()
+	return m, program.Batch(waitEvent(m.events), saveTick())
 }
 
 // syncList brings the list up to date with the run and writes it.
@@ -698,13 +569,13 @@ func (m *Model) syncList() {
 	}
 }
 
-func saveTick() tea.Cmd {
-	return tea.Tick(saveEvery, func(t time.Time) tea.Msg { return saveTickMsg(t) })
+func saveTick() program.Cmd {
+	return program.Tick(saveEvery, func(t time.Time) program.Msg { return saveTickMsg(t) })
 }
 
 // stop ends the run: the downloads under way are cancelled, and what each song got to is
 // written to the list. With quit the app ends afterwards.
-func (m Model) stop(quit bool) (Model, tea.Cmd) {
+func (m Model) stop(quit bool) (Model, program.Cmd) {
 	if m.run == nil {
 		if quit {
 			return m, m.quit()
@@ -715,20 +586,20 @@ func (m Model) stop(quit bool) (Model, tea.Cmd) {
 	m.syncList()
 	m.life.BeginStop()
 	run, session := m.run, m.session
-	return m, func() tea.Msg {
+	return m, func() program.Msg {
 		run.Close()
 		_ = session.SyncSnapshot(run.Snapshot())
 		return runClosedMsg{quit: quit}
 	}
 }
 
-func (m Model) quit() tea.Cmd {
+func (m Model) quit() program.Cmd {
 	quit := m.host.Quit
-	return func() tea.Msg {
+	return func() program.Msg {
 		if quit != nil {
 			quit()
 		}
-		return tea.Quit()
+		return program.Quit()
 	}
 }
 
@@ -744,7 +615,7 @@ func (m Model) togglePause() Model {
 		m.run.Pause()
 	}
 	m.done = runcontrol.PauseNotice(!held)
-	m.show(m.view().WithPaused(m.run.Paused()))
+	m.dl.Paused = m.run.Paused()
 
 	return m
 }
@@ -767,15 +638,6 @@ func (m Model) Reconfigure(cfg config.Config, live engine.LiveSettings) Model {
 	return m
 }
 
-// View is the screen. While a menu is open the mouse is followed wherever it goes, so that
-// moving over another heading opens its menu, as in a desktop app; otherwise only clicks and
-// drags are reported.
-func (m Model) View() tea.View {
-	view := screenview.Of(m.render())
-	view.MouseMode = tea.MouseModeAllMotion // the buttons light up under the pointer
-	return view
-}
-
 // finished says whether the run has nothing more to do (see runcontrol).
 func (m Model) finished() bool { return m.facts().Finished() }
 
@@ -793,7 +655,8 @@ func (m Model) settle() Model {
 	m.syncList()
 	m.run.Close()
 	m.run = nil
-	m.show(m.view().Detach().WithState(m.session.Preview()))
+	m.detach()
+	m.dl.Show(m.session.Preview())
 
 	return m
 }
@@ -802,7 +665,7 @@ func (m Model) settle() Model {
 func (m Model) holdsOnlyTheList() bool { return m.facts().HoldsOnlyTheList() }
 
 // stopThen stops the run, and does what msg asks once it has wound down.
-func (m Model) stopThen(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) stopThen(msg program.Msg) (program.Model, program.Cmd) {
 	m.life.WaitThen(msg)
 
 	return m.stop(false)
@@ -826,10 +689,10 @@ func (m *Model) openFolder() {
 	case dir == "":
 		m.notice = "No folder is chosen for the videos yet: choose one in File > Preferences"
 	case m.host.OpenFolder == nil:
-		m.caution = "The videos are in " + cells.TruncateMiddle(dir, max(m.width-24, 20))
+		m.caution = "The videos are in " + dir
 	default:
 		if _, err := os.Stat(dir); err != nil {
-			m.caution = "The folder is made when the first download starts: " + cells.TruncateMiddle(dir, max(m.width-60, 20))
+			m.caution = "The folder is made when the first download starts: " + dir
 
 			return
 		}
@@ -865,4 +728,10 @@ func (m Model) draftPath() string {
 	}
 
 	return ""
+}
+
+// detach lets the run go, keeping what it reported.
+func (m *Model) detach() {
+	m.dl.Detach()
+	m.events = nil
 }

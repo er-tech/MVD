@@ -2,15 +2,10 @@ package workspace
 
 import (
 	"time"
+	"youtube-downloader/libs/mvd-core/program"
 
-	tea "charm.land/bubbletea/v2"
-
-	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/workspace/runcontrol"
 )
-
-// topRows is the rows above the screen: the menu bar.
-const topRows = 1
 
 // The buttons of the toolbar, and the Run menu entries that do the same.
 const (
@@ -77,82 +72,19 @@ func (m Model) buttons() []button {
 	return out
 }
 
-// buttonRows is where the buttons are: the rows at the bottom of the column of playlists,
-// counted on the screen, with the left column and the width of the buttons. ok is false
-// when the screen has no such column (a narrow window), and the Run menu is the way then.
-func (m Model) buttonRows() (x, y, w int, ok bool) {
-	cx, cy, cw, ch, reserve, drawn := m.view().LeftColumn()
-	if !drawn || reserve == 0 {
-		return 0, 0, 0, false
-	}
-	return cx, cy + (ch - reserve) + topRows, cw, true
-}
-
-// buttonKind is how a button looks: the first one that can be used is the main one.
-func buttonKind(buttons []button, i int) dialog.PillKind {
-	if buttons[i].disabled {
-		return dialog.PillDisabled
-	}
+// isMain says whether button i is the main one: the first that can be used.
+func isMain(buttons []button, i int) bool {
 	for j, b := range buttons {
 		if !b.disabled {
-			if j == i {
-				return dialog.PillPrimary
-			}
-			break
+			return j == i
 		}
 	}
-	return dialog.PillNormal
-}
 
-// buttonsView draws the buttons in the rows kept for them.
-func (m Model) buttonsView(screen string) string {
-	x, y, w, ok := m.buttonRows()
-	if !ok {
-		return screen
-	}
-	buttons := m.buttons()
-	for i, b := range buttons {
-		hover := m.hoverY == y+i && m.hoverX >= x && m.hoverX < x+w
-		screen = dialog.Overlay(screen, dialog.WidePill(b.label, w, buttonKind(buttons, i), hover), x, y+i)
-	}
-	return screen
-}
-
-// toolbarClick does what the button at (x, y) of the screen does; it reports false when
-// there is none.
-func (m Model) toolbarClick(x, y int) (tea.Model, tea.Cmd, bool) {
-	bx, by, bw, ok := m.buttonRows()
-	if !ok || x < bx || x >= bx+bw {
-		return m, nil, false
-	}
-	buttons := m.buttons()
-	i := y - by
-	if i < 0 || i >= len(buttons) {
-		return m, nil, false
-	}
-	if buttons[i].disabled {
-		return m, nil, true
-	}
-	next, cmd := m.choose(buttons[i].entry)
-	return next, cmd, true
-}
-
-// refreshRunMenus greys out what the Run menu offers and the workspace cannot do now.
-func (m Model) refreshRunMenus() Model {
-	_, waiting := m.toolsWaiting()
-	menu := runcontrol.RunMenuOf(m.facts(), len(m.session.Sources()) == 0, waiting)
-	m.bar.SetEnabled(entryStart, menu.Start)
-	m.bar.SetEnabled(entryPause, menu.Pause)
-	m.bar.SetEnabled(entryResume, menu.Resume)
-	m.bar.SetEnabled(entryStop, menu.Stop)
-	m.bar.SetEnabled(entryRetry, menu.Retry)
-	m.bar.SetEnabled(entryOpenFolder, m.host.OpenFolder != nil)
-	m.bar.SetEnabled(entryDownloadAll, menu.DownloadAll)
-	return m
+	return false
 }
 
 // runChoice does what the entries of the Run menu, and the buttons of the toolbar, say.
-func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
+func (m Model) runChoice(name string) (program.Model, program.Cmd, bool) {
 	switch name {
 	case entryStart:
 		next, cmd := m.start(true)
@@ -179,29 +111,6 @@ func (m Model) runChoice(name string) (tea.Model, tea.Cmd, bool) {
 	return m, nil, false
 }
 
-// keepRoomForButtons tells the screen how many rows under the playlists the buttons take, and
-// whether the list can be changed on it.
-func (m Model) keepRoomForButtons() Model {
-	m.show(m.view().WithReserve(len(m.buttons())).WithEditable(m.editable()).WithLinkEditing(m.addable()))
-	return m
-}
-
-// disabledReason is why the button under the pointer cannot be used, or "" when the pointer is
-// not over a button that cannot.
-func (m Model) disabledReason() string {
-	x, y, w, ok := m.buttonRows()
-	if !ok {
-		return ""
-	}
-	for i, b := range m.buttons() {
-		if b.disabled && m.hoverY == y+i && m.hoverX >= x && m.hoverX < x+w {
-			state, waiting := m.toolsWaiting()
-			return runcontrol.DisabledReason(m.facts(), waiting, state.Message)
-		}
-	}
-	return ""
-}
-
 // toolsWaiting says whether the tools of the downloads are not ready, and what they are.
 func (m Model) toolsWaiting() (ToolsState, bool) {
 	if m.host.Tools == nil {
@@ -217,11 +126,11 @@ const toolsEvery = 400 * time.Millisecond
 
 // toolsTick asks to be woken to look at the tools again, as long as they are being fetched; it
 // is nothing once they are ready or when one could not be gotten, which does not change.
-func (m Model) toolsTick() tea.Cmd {
+func (m Model) toolsTick() program.Cmd {
 	state, waiting := m.toolsWaiting()
 	if !waiting || state.Failed {
 		return nil
 	}
 
-	return tea.Tick(toolsEvery, func(t time.Time) tea.Msg { return toolsTickMsg(t) })
+	return program.Tick(toolsEvery, func(t time.Time) program.Msg { return toolsTickMsg(t) })
 }

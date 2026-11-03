@@ -1,11 +1,8 @@
 package workspace
 
 import (
-	"strings"
+	"youtube-downloader/libs/mvd-core/program"
 
-	tea "charm.land/bubbletea/v2"
-
-	"youtube-downloader/libs/mvd-core/lineedit"
 	"youtube-downloader/libs/mvd-core/workspace/closequestion"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 )
@@ -41,18 +38,18 @@ func (m Model) windowQuestion() *windowsnapshot.Question {
 
 		return &windowsnapshot.Question{
 			ID: windowsnapshot.QuestionAsk, Title: title, Tone: windowsnapshot.ToneAsk,
-			Field: &windowsnapshot.QuestionField{Label: "Address", Text: m.inline.line.Value()},
+			Field: &windowsnapshot.QuestionField{Label: "Address", Text: m.inline.text},
 			Buttons: []windowsnapshot.Button{
 				{ID: questionOK, Label: "OK", Role: windowsnapshot.RoleDefault, Enabled: true},
 				{ID: questionCancel, Label: "Cancel", Role: windowsnapshot.RoleCancel, Enabled: true},
 			},
 		}
 	case m.asking != askNone:
-		prompt := strings.TrimSuffix(strings.TrimSpace(m.input.Prompt), ":")
+		prompt := m.askPrompt
 
 		return &windowsnapshot.Question{
 			ID: windowsnapshot.QuestionAsk, Title: prompt, Tone: windowsnapshot.ToneAsk,
-			Field: &windowsnapshot.QuestionField{Label: prompt, Text: m.input.Value()},
+			Field: &windowsnapshot.QuestionField{Label: prompt, Text: m.askText},
 			Buttons: []windowsnapshot.Button{
 				{ID: questionOK, Label: "OK", Role: windowsnapshot.RoleDefault, Enabled: true},
 				{ID: questionCancel, Label: "Cancel", Role: windowsnapshot.RoleCancel, Enabled: true},
@@ -94,7 +91,7 @@ func (m Model) windowQuestion() *windowsnapshot.Question {
 }
 
 // questionIntent answers the question or note open over the window, as its keys would.
-func (m Model) questionIntent(in windowsnapshot.Intent) (tea.Model, tea.Cmd) {
+func (m Model) questionIntent(in windowsnapshot.Intent) (program.Model, program.Cmd) {
 	switch {
 	case m.closing.On && in.Kind == windowsnapshot.IntentQuestionButton:
 		if in.ID == questionQuit {
@@ -102,19 +99,18 @@ func (m Model) questionIntent(in windowsnapshot.Intent) (tea.Model, tea.Cmd) {
 		}
 		m.closing = closequestion.State{}
 	case m.inline.on && in.Kind == windowsnapshot.IntentQuestionText:
-		m.inline.line = lineedit.New(in.Text, max(len([]rune(in.Text))+1, 20))
+		m.inline.text = in.Text
 	case m.inline.on && in.Kind == windowsnapshot.IntentQuestionButton:
 		if in.ID == questionOK {
-			return m.inlineKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+			return m.inlineEnter(), nil
 		}
 
 		return m.stopInline(false), nil
 	case m.asking != askNone && in.Kind == windowsnapshot.IntentQuestionText:
-		m.input.SetValue(in.Text)
-		m.input.CursorEnd()
+		m.askText = in.Text
 	case m.asking != askNone && in.Kind == windowsnapshot.IntentQuestionButton:
 		if in.ID == questionOK {
-			return m.answer(tea.KeyPressMsg{Code: tea.KeyEnter})
+			return m.answer()
 		}
 		m.asking = askNone
 	case in.Kind == windowsnapshot.IntentQuestionButton:

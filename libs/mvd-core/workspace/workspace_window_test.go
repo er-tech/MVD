@@ -213,10 +213,10 @@ func TestAnAddressBeingWrittenIsAQuestionOfTheWindow(t *testing.T) {
 
 func TestTheWordsNextToASourceSayHowManyOfficialVideosAreFound(t *testing.T) {
 	cases := map[string]downloadsnapshot.PlaylistRow{
-		"39 of 140 official found":                 {Count: "0/140", Official: 39, Total: 140},
-		"5 of 140 downloaded":                      {Count: "5/140", Official: 39, Done: 5, Begun: true, Total: 140},
-		"reading":        {Count: "reading"},
-		"can't read":     {Count: "can't read"},
+		"39 of 140 official found": {Count: "0/140", Official: 39, Total: 140},
+		"5 of 140 downloaded":      {Count: "5/140", Official: 39, Done: 5, Begun: true, Total: 140},
+		"reading":                  {Count: "reading"},
+		"can't read":               {Count: "can't read"},
 	}
 	for want, row := range cases {
 		if got := sourceDetail(row); got != want {

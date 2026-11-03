@@ -1,18 +1,14 @@
 package tui
 
 import (
-	"strings"
-
-	"github.com/charmbracelet/x/ansi"
-	tea "charm.land/bubbletea/v2"
-
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"youtube-downloader/libs/mvd-core/config"
-	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/prefspopup"
+	"youtube-downloader/libs/mvd-core/program"
 	"youtube-downloader/libs/mvd-core/workspace"
 )
 
@@ -43,132 +39,78 @@ func TestPreferencesApplyAtOnceExceptWhereFilesGo(t *testing.T) {
 	}
 }
 
-func openedPreferences(t *testing.T) (a workspaceApp, x0, y0, w, h int) {
+func openedPreferences(t *testing.T) workspaceApp {
 	t.Helper()
-	a = NewWorkspaceApp(WorkspaceInput{
+	a := NewWorkspaceApp(WorkspaceInput{
 		Setup: SetupInput{Cfg: config.Config{OutputDir: "/music", MaxConcurrentDownloads: 2}, CfgPath: filepath.Join(t.TempDir(), "config.conf")},
 	}).(workspaceApp)
-	next, _ := a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	next, _ := a.Update(program.WindowSizeMsg{Width: 120, Height: 40})
 	next, _ = next.Update(workspace.PreferencesRequestedMsg{})
 	a = next.(workspaceApp)
-	w, h = a.popupSize()
-	x0, y0 = dialog.Centre(a.width, a.height, w, h)
-	return a, x0, y0, w, h
+	if !a.inPrefs {
+		t.Fatal("the preferences did not open")
+	}
+
+	return a
 }
 
-func TestAClickIsWorkedOutInsideTheFrameOfThePopup(t *testing.T) {
-	a, x0, y0, _, _ := openedPreferences(t)
-	click := func(x, y int) tea.MouseClickMsg { return tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft} }
-	if _, in := a.inPopup(click(x0, y0)); in {
-		t.Errorf("a click on the frame reached the preferences")
-	}
-	if _, in := a.inPopup(click(0, 0)); in {
-		t.Errorf("a click outside the popup reached the preferences")
-	}
-	got, in := a.inPopup(click(x0+3, y0+2))
-	if !in || got.Mouse().X != 2 || got.Mouse().Y != 1 {
-		t.Errorf("a click inside = %+v, %v", got, in)
-	}
-}
+// said is what the status line of the window says.
+func said(m program.Model) string { return m.(workspaceApp).ws.Window().Status.Summary }
 
-func TestAClickOnATabOfThePopupShowsItsPage(t *testing.T) {
-	a, x0, y0, _, _ := openedPreferences(t)
-	// The Download tab: the second box of the row, a few columns in.
-	next, _ := a.Update(tea.MouseClickMsg{X: x0 + 1 + 14, Y: y0 + 2, Button: tea.MouseLeft})
-	if got := next.(workspaceApp).prefs.Tab(); got != 1 {
-		t.Errorf("tab %d, want 1", got)
-	}
-}
-
-func TestTheButtonsOfThePopupCloseIt(t *testing.T) {
-	_, spans := dialog.Buttons(popupButtons, -1, nil)
-	for button, name := range popupButtons {
-		a, x0, y0, _, h := openedPreferences(t)
-		click := tea.MouseClickMsg{X: x0 + 2 + spans[button].X0, Y: y0 + h - 2, Button: tea.MouseLeft}
-		next, _ := a.Update(click)
-		if next.(workspaceApp).inPrefs {
-			t.Errorf("%s did not close the popup", name)
-		}
-	}
-}
-
-func TestEscClosesThePopupAndSaveKeepsTheFolders(t *testing.T) {
-	a, _, _, _, _ := openedPreferences(t)
-	_, cmd := a.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	next, _ := a.Update(cmd())
+func TestCloseAndSaveLeaveThePreferencesAndSaveKeepsTheFolders(t *testing.T) {
+	a := openedPreferences(t)
+	next, _ := a.Update(prefspopup.CloseMsg{})
 	if next.(workspaceApp).inPrefs {
-		t.Error("esc did not close the popup")
+		t.Error("close did not close the preferences")
 	}
 
-	a, _, _, _, _ = openedPreferences(t)
+	a = openedPreferences(t)
 	a.prefs = a.prefs.WithConfig(config.Config{OutputDir: "/elsewhere", MaxConcurrentDownloads: 2})
 	next, _ = a.Update(prefspopup.SaveMsg{})
 	if got := next.(workspaceApp).cfg.OutputDir; got != "/elsewhere" {
 		t.Errorf("save left the folder at %q", got)
 	}
+	if next.(workspaceApp).inPrefs {
+		t.Error("save did not close the preferences")
+	}
 }
 
-func TestTheWorkspaceBehindThePreferencesOfTheFirstStartIsDrawn(t *testing.T) {
+func TestTheWorkspaceBehindThePreferencesOfTheFirstStartIsReady(t *testing.T) {
 	a := NewWorkspaceApp(WorkspaceInput{
 		Setup: SetupInput{Cfg: config.Config{OutputDir: "/music"}, CfgPath: filepath.Join(t.TempDir(), "config.conf"), OpenConfig: true},
 	})
-	next, _ := a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
-	screen := ansi.Strip(next.View().Content)
-	if strings.Contains(screen, "starting...") || !strings.Contains(screen, "Preferences") || !strings.Contains(screen, "Add source") {
-		t.Errorf("the first start shows\n%s", screen)
+	next, _ := a.Update(program.WindowSizeMsg{Width: 120, Height: 40})
+	app := next.(workspaceApp)
+	if !app.inPrefs {
+		t.Fatal("the first start did not open the preferences")
+	}
+	if toolbar := app.ws.Window().Toolbar; len(toolbar) == 0 || !strings.Contains(toolbar[len(toolbar)-1].Label, "Add source") {
+		t.Errorf("the workspace behind the preferences has the toolbar %+v", toolbar)
 	}
 }
 
 func TestSavingPreferencesSaysSo(t *testing.T) {
-	a, _, _, _, _ := openedPreferences(t)
+	a := openedPreferences(t)
 	a.prefs = a.prefs.WithConfig(config.Config{OutputDir: "/elsewhere", MaxConcurrentDownloads: 2})
 	next, _ := a.Update(prefspopup.SaveMsg{})
-	screen := ansi.Strip(next.View().Content)
-	if !strings.Contains(screen, "Preferences saved") {
-		t.Errorf("saving says nothing:\n%s", screen)
+	if got := said(next); !strings.Contains(got, "Preferences saved") {
+		t.Errorf("saving says %q", got)
 	}
 }
 
 func TestLeavingPreferencesWithAChangedFolderWarnsThatItWasNotKept(t *testing.T) {
-	a, _, _, _, _ := openedPreferences(t)
+	a := openedPreferences(t)
 	a.prefs = a.prefs.WithConfig(config.Config{OutputDir: "/elsewhere", MaxConcurrentDownloads: 2})
 	next, _ := a.Update(prefspopup.CloseMsg{})
-	screen := ansi.Strip(next.View().Content)
-	if !strings.Contains(screen, "were not kept") {
-		t.Errorf("a dropped folder change is not warned of:\n%s", screen)
+	if got := said(next); !strings.Contains(got, "were not kept") {
+		t.Errorf("a dropped folder change says %q", got)
 	}
 }
 
 func TestLeavingPreferencesWithNothingChangedSaysNothing(t *testing.T) {
-	a, _, _, _, _ := openedPreferences(t)
+	a := openedPreferences(t)
 	next, _ := a.Update(prefspopup.CloseMsg{})
-	screen := ansi.Strip(next.View().Content)
-	if strings.Contains(screen, "were not kept") || strings.Contains(screen, "Preferences saved") {
-		t.Errorf("closing an untouched popup said something:\n%s", screen)
-	}
-}
-
-func TestF1ShowsTheKeyboardShortcutsOverThePreferencesAndEscComesBackToThem(t *testing.T) {
-	a, _, _, _, _ := openedPreferences(t)
-	next, _ := a.Update(tea.KeyPressMsg{Code: tea.KeyF1})
-	a = next.(workspaceApp)
-	if !a.shortcutsOpen || !strings.Contains(ansi.Strip(a.View().Content), "Keyboard shortcuts") {
-		t.Fatalf("F1 did not open the shortcuts over the preferences")
-	}
-	next, _ = a.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	a = next.(workspaceApp)
-	if a.shortcutsOpen || !a.inPrefs {
-		t.Errorf("Esc should close the shortcuts and leave the preferences open: shortcuts %v, preferences %v", a.shortcutsOpen, a.inPrefs)
-	}
-	if !strings.Contains(ansi.Strip(a.View().Content), "Preferences") {
-		t.Error("the preferences are not showing again")
-	}
-}
-
-func TestClosingThePreferencesClosesTheShortcutsToo(t *testing.T) {
-	a, _, _, _, _ := openedPreferences(t)
-	a.shortcutsOpen = true
-	if a = a.closePrefs(false); a.shortcutsOpen {
-		t.Error("the shortcuts stayed open after the preferences closed")
+	if got := said(next); strings.Contains(got, "were not kept") || strings.Contains(got, "Preferences saved") {
+		t.Errorf("closing untouched preferences said %q", got)
 	}
 }

@@ -1,18 +1,14 @@
 package tui
 
 import (
-	"context"
 	"reflect"
 
-	tea "charm.land/bubbletea/v2"
-
 	"youtube-downloader/libs/mvd-core/config"
-	"youtube-downloader/libs/mvd-core/dialog"
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/prefsform"
 	"youtube-downloader/libs/mvd-core/prefspopup"
-	"youtube-downloader/libs/mvd-core/screenview"
+	"youtube-downloader/libs/mvd-core/program"
 	"youtube-downloader/libs/mvd-core/workspace"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 )
@@ -25,27 +21,26 @@ type WorkspaceInput struct {
 	List *downloadlist.Session
 	// Live is the settings a run reads again at every download, taken from the config.
 	Live func(config.Config) engine.LiveSettings
-	// Modal, when set, is called with true when a popup opens over the screen and false when
-	// the last one closes, so a host can dim what is around the terminal.
+	// Modal, when set, is called with true when a window opens over the main one and false when the
+	// last one closes, so a host can dim what is around it.
 	Modal func(open bool)
 	// Style, when set, is called with the window style of the settings and its colour scheme when
-	// the app starts and whenever either changes, and the preferences offer the choice. Window is then called with what
-	// the window shows after every change while the style is a classic one, for the host to draw.
+	// the app starts and whenever either changes. Window is then called with what the window shows
+	// after every change, for the host to draw.
 	Style  func(style, scheme string)
 	Window func(windowsnapshot.Snapshot)
 	// Preferences, when set, is called after every change with the preferences as a window draws
-	// them while they are open, and nil once they close: the host draws them, in every style,
-	// instead of the terminal look's popup.
+	// them while they are open, and nil once they close.
 	Preferences func(*prefsform.Window)
 	// Remember, when set, is called with the file of the list, "" while it has none, when the app
 	// starts and whenever that changes, so the next start can open the same list again.
 	Remember func(path string)
 }
 
-// NewWorkspaceApp returns the app whose main screen is the workspace: the download list
-// under a menu bar. The preferences are shown over it from the File menu.
-func NewWorkspaceApp(in WorkspaceInput) tea.Model {
-	a := workspaceApp{in: in, ws: workspace.New(in.Host, in.Setup.Cfg, in.List), cfg: in.Setup.Cfg, hoverX: -1, hoverY: -1}
+// NewWorkspaceApp returns the app whose main window is the workspace: the download list under a
+// menu bar. The preferences open over it from the File menu.
+func NewWorkspaceApp(in WorkspaceInput) program.Model {
+	a := workspaceApp{in: in, ws: workspace.New(in.Host, in.Setup.Cfg, in.List), cfg: in.Setup.Cfg}
 	if in.Setup.OpenConfig {
 		a = a.openPrefs() // the first run: the settings have never been looked at
 		a.prefs = a.prefs.WithWelcome()
@@ -54,35 +49,24 @@ func NewWorkspaceApp(in WorkspaceInput) tea.Model {
 }
 
 type workspaceApp struct {
-	in            WorkspaceInput
-	ws            workspace.Model
-	cfg           config.Config
-	prefs         prefspopup.Model
-	inPrefs       bool
-	// shortcutsOpen is whether the Keyboard shortcuts window is open over the preferences, and
-	// shortcutsScroll how far down its lines it is.
-	shortcutsOpen   bool
-	shortcutsScroll int
-	width, height int
-	hoverX, hoverY int
-	// modal is whether a popup was last reported open to Modal, and style the window style
-	// last reported to Style.
-	modal *bool
-	style *string
-	// listed is the file of the list last reported to Remember.
+	in      WorkspaceInput
+	ws      workspace.Model
+	cfg     config.Config
+	prefs   prefspopup.Model
+	inPrefs bool
+	// modal is whether a window was last reported open to Modal, style the window style last
+	// reported to Style, and listed the file of the list last reported to Remember.
+	modal  *bool
+	style  *string
 	listed *string
 }
 
-// Init returns the first commands of the workspace, and of the preferences when they are open.
-func (a workspaceApp) Init() tea.Cmd {
-	if a.inPrefs {
-		return tea.Batch(a.ws.Init(), a.prefs.Init())
-	}
-	return a.ws.Init()
-}
+// Init returns the first commands of the workspace.
+func (a workspaceApp) Init() program.Cmd { return a.ws.Init() }
 
-// Update handles msg and returns the next model and its command. It tells the host when a popup opens or closes and when the window style changes.
-func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+// Update handles msg and returns the next model and its command. It tells the host when a window
+// opens or closes, when the window style changes and when the file of the list changes.
+func (a workspaceApp) Update(msg program.Msg) (program.Model, program.Cmd) {
 	next, cmd := a.update(msg)
 	if app, ok := next.(workspaceApp); ok && app.in.Modal != nil {
 		open := app.inPrefs || app.ws.WindowOpen()
@@ -105,8 +89,7 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return next, cmd
 }
 
-// report tells the host the window style when it changed, and what the window shows while the
-// style is a classic one; a screen only the terminal draws covers it, as the preferences do.
+// report tells the host the window style when it changed, and what the window shows.
 func (a workspaceApp) report() workspaceApp {
 	style := a.cfg.WindowStyle
 	if !config.ValidWindowStyle(style) {
@@ -134,69 +117,32 @@ func (a workspaceApp) report() workspaceApp {
 	return a
 }
 
-func (a workspaceApp) update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// sizeCmd is what the workspace asked for when it was told the size: it can start loading the
-	// list, and a command that is dropped leaves the workspace waiting for a start that never comes.
-	var sizeCmd tea.Cmd
+func (a workspaceApp) update(msg program.Msg) (program.Model, program.Cmd) {
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		a.width, a.height = msg.Width, msg.Height
-		// The workspace behind the preferences needs the size too: on the first start the
-		// preferences are open at once, and it would never be drawn.
+	case program.WindowSizeMsg:
 		next, cmd := a.ws.Update(msg)
 		a.ws = next.(workspace.Model)
-		if !a.inPrefs {
-			return a, cmd
-		}
-		a.prefs = a.prefs.SetSize(a.bodySize())
-		sizeCmd = cmd
+		return a, cmd
 	case workspace.PreferencesRequestedMsg:
-		a = a.openPrefs()
-		return a, a.prefs.Init()
+		return a.openPrefs(), nil
 	case prefspopup.CloseMsg:
 		return a.closePrefs(false), nil
 	case prefspopup.SaveMsg:
 		return a.closePrefs(true), nil
-	}
-	if mouse, ok := msg.(tea.MouseMsg); ok {
-		a.hoverX, a.hoverY = mouse.Mouse().X, mouse.Mouse().Y
-	}
-	if key, ok := msg.(tea.KeyPressMsg); ok && a.inPrefs {
-		switch {
-		case a.shortcutsOpen:
-			a.shortcutsScroll, a.shortcutsOpen = a.ws.ShortcutsKey(a.shortcutsScroll, key)
-
-			return a, nil
-		case key.String() == "f1":
-			a.shortcutsOpen, a.shortcutsScroll = true, 0
-
+	case prefspopup.WindowIntentMsg:
+		if !a.inPrefs {
 			return a, nil
 		}
-	}
-	if workspace.Background(msg) {
-		next, cmd := a.ws.Update(msg) // the workspace's own beat goes on under a popup
-		a.ws = next.(workspace.Model)
-		return a, cmd
-	}
-	if a.inPrefs {
-		if mouse, ok := msg.(tea.MouseMsg); ok {
-			if a.onClose(mouse) {
-				return a.closePrefs(false), nil
-			}
-			inner, inside := a.inPopup(mouse)
-			if !inside {
-				return a, nil
-			}
-			var forward bool
-			if a, msg, forward = a.popupMouse(inner); !forward {
-				return a, nil
-			}
-		}
-		var cmd tea.Cmd
+		var cmd program.Cmd
 		a.prefs, cmd = a.prefs.Update(msg)
-		// Each change is kept and goes to the run at once; the places the files go to and
-		// the pattern of their names wait for the person to confirm with save.
-		return a.apply(a.prefs.Config(), false), tea.Batch(sizeCmd, cmd)
+		// Each change is kept and goes to the run at once; the places the files go to and the
+		// pattern of their names wait for the person to confirm with save.
+		return a.apply(a.prefs.Config(), false), cmd
+	}
+	if a.inPrefs && !workspace.Background(msg) {
+		var cmd program.Cmd
+		a.prefs, cmd = a.prefs.Update(msg)
+		return a.apply(a.prefs.Config(), false), cmd
 	}
 	next, cmd := a.ws.Update(msg)
 	a.ws = next.(workspace.Model)
@@ -205,7 +151,7 @@ func (a workspaceApp) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // openPrefs shows the preferences over the workspace.
 func (a workspaceApp) openPrefs() workspaceApp {
-	a.prefs = prefspopup.New(a.cfg, a.popupHost()).SetSize(a.bodySize())
+	a.prefs = prefspopup.New(a.cfg, a.popupHost())
 	a.inPrefs = true
 	return a
 }
@@ -219,15 +165,14 @@ func (a workspaceApp) closePrefs(confirm bool) workspaceApp {
 		a = a.apply(chosen, true)
 		a.ws = a.ws.Confirm("Preferences saved")
 	case a.waitsForSave(chosen):
-		a.ws = a.ws.Caution("The folder or file names you changed were not kept. Press s in Preferences to save them.")
+		a.ws = a.ws.Caution("The folder or file names you changed were not kept. Save them in Preferences.")
 	}
-	a.inPrefs, a.shortcutsOpen = false, false
-	ApplyTheme(a.cfg.Colors)
+	a.inPrefs = false
 	return a
 }
 
 // waitsForSave says whether the preferences chosen differ from the ones in use in the settings
-// that are only kept when the person saves: where the files go and how they are named.
+// that are only kept when the person saves: where the files go to and how they are named.
 func (a workspaceApp) waitsForSave(chosen config.Config) bool {
 	return chosen.OutputDir != a.cfg.OutputDir ||
 		chosen.OutputTemplate != a.cfg.OutputTemplate ||
@@ -277,50 +222,4 @@ func (a workspaceApp) apply(cfg config.Config, confirmed bool) workspaceApp {
 	}
 	a.ws = a.ws.Reconfigure(cfg, live)
 	return a
-}
-
-// popupSize is the room the preferences take over the workspace.
-func (a workspaceApp) popupSize() (int, int) {
-	return dialog.Sized(a.width, a.height, popupPercent, 60, 20)
-}
-
-// popupPercent is how much of the screen the preferences take, in each direction.
-const popupPercent = 85
-
-// Outline describes the current screen (see ScreenOutline).
-func (a workspaceApp) Outline() ScreenOutline {
-	if a.inPrefs {
-		return a.prefs.Outline()
-	}
-	return a.ws.Outline()
-}
-
-// View is empty when a host draws the window. Without one it is the workspace as a terminal view,
-// with the preferences drawn over it when open.
-func (a workspaceApp) View() tea.View {
-	if a.in.Window != nil {
-		return screenview.Of("") // the host draws the window from what Update reports
-	}
-	if !a.inPrefs {
-		return a.ws.View()
-	}
-	if a.in.Preferences != nil {
-		// The host draws the preferences as a window of its own, over the workspace.
-		return screenview.Of(dialog.Dim(a.ws.Render()))
-	}
-	w, h := a.popupSize()
-	x, y := dialog.Centre(a.width, a.height, w, h)
-	screen := dialog.Overlay(dialog.Dim(a.ws.Render()), dialog.ClosableFrame("Preferences", a.popupLines(), w, h), x, y)
-	if a.shortcutsOpen {
-		view, sx, sy := a.ws.ShortcutsWindow(a.shortcutsScroll)
-		screen = dialog.Overlay(dialog.Dim(screen), view, sx, sy)
-	}
-
-	return screenview.Of(screen)
-}
-
-// RunWorkspace runs the workspace app until the person quits it or ctx ends.
-func RunWorkspace(ctx context.Context, in WorkspaceInput) error {
-	_, err := tea.NewProgram(NewWorkspaceApp(in), tea.WithContext(ctx)).Run()
-	return err
 }

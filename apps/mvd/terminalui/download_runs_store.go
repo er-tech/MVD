@@ -91,36 +91,6 @@ func (r *Runs) StartList(parent context.Context, ytDlpPath string, logf func(str
 	}
 }
 
-// StartPlan starts a run that lists, names and picks and downloads nothing, for the
-// playlist editor. It is not counted as busy: nothing is being downloaded.
-func (r *Runs) StartPlan(parent context.Context, ytDlpPath string, logf func(string, ...interface{})) tui.RunStarter {
-	return func(cfg config.Config, urls []string) (tui.Run, error) {
-		ctx, cancel := context.WithCancel(parent)
-		eng, err := runner.BuildPlanEngine(ctx, ytDlpPath, cfg, urls, logf)
-		if err != nil {
-			cancel()
-			return nil, err
-		}
-		return r.launch(ctx, cancel, eng, false), nil
-	}
-}
-
-// StartPlanDownload starts the download of what the playlist editor chose.
-func (r *Runs) StartPlanDownload(parent context.Context, ytDlpPath string, logf func(string, ...interface{})) tui.PlanDownloadStarter {
-	return func(cfg config.Config, plan []engine.PlannedEntry) (tui.Run, error) {
-		if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
-			return nil, fmt.Errorf("cannot create the download folder %s: %w", cfg.OutputDir, err)
-		}
-		ctx, cancel := context.WithCancel(parent)
-		eng, err := runner.BuildPlanDownloadEngine(ctx, ytDlpPath, cfg, plan, logf)
-		if err != nil {
-			cancel()
-			return nil, err
-		}
-		return r.launch(ctx, cancel, eng, true), nil
-	}
-}
-
 // launch runs an engine and returns the run the app model closes. When track is true the
 // run is the current one: its failures are tried again after an update, and it counts as
 // busy while it downloads.

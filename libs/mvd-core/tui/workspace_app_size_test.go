@@ -3,8 +3,7 @@ package tui
 import (
 	"path/filepath"
 	"testing"
-
-	tea "charm.land/bubbletea/v2"
+	"youtube-downloader/libs/mvd-core/program"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/downloadlist"
@@ -30,7 +29,7 @@ func TestTheSizeMessageThatBeginsLoadingTheListKeepsItsCommand(t *testing.T) {
 		},
 	})
 
-	_, cmd := a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	_, cmd := a.Update(program.WindowSizeMsg{Width: 120, Height: 40})
 	if cmd == nil {
 		t.Fatal("the size message dropped the command that starts loading")
 	}
@@ -43,11 +42,11 @@ func TestTheSizeMessageThatBeginsLoadingTheListKeepsItsCommand(t *testing.T) {
 }
 
 // run does what cmd asks, and what the commands of a batch ask.
-func run(cmd tea.Cmd) {
+func run(cmd program.Cmd) {
 	if cmd == nil {
 		return
 	}
-	if batch, ok := cmd().(tea.BatchMsg); ok {
+	if batch, ok := cmd().(program.BatchMsg); ok {
 		for _, each := range batch {
 			run(each)
 		}
