@@ -6,7 +6,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"youtube-downloader/libs/mvd-core/dialog"
-	preferencespage "youtube-downloader/libs/mvd-core/setup/preferences"
 )
 
 // The popup of the preferences is the prefspopup, in a frame, with a row of buttons under
@@ -100,28 +99,28 @@ func (a workspaceApp) popupMouse(msg tea.MouseMsg) (workspaceApp, tea.Msg, bool)
 }
 
 // movingResult is what to tell the person about the move of the app.
-func movingResult(outcome preferencespage.MoveOutcome, err error) (string, error) {
+func movingResult(outcome MoveOutcome, err error) (string, error) {
 	switch {
 	case err != nil:
 		return "", err
-	case outcome == preferencespage.MoveStarted:
+	case outcome == MoveStarted:
 		return "MVD was moved to its own folder. This window will close and the new copy will open.", nil
-	case outcome == preferencespage.MoveAlreadyThere:
+	case outcome == MoveAlreadyThere:
 		return "MVD already lives in its own folder.", nil
-	case outcome == preferencespage.MoveUnavailable:
+	case outcome == MoveUnavailable:
 		return "This machine has no place to move MVD to, or no way to ask. Start MVD with -move from a terminal.", nil
 	}
 	return "MVD was not moved.", nil
 }
 
 // removalResult is what to tell the person about the removal of the app.
-func removalResult(outcome preferencespage.RemovalOutcome, err error) (string, error) {
+func removalResult(outcome RemovalOutcome, err error) (string, error) {
 	switch {
 	case err != nil:
 		return "", err
-	case outcome == preferencespage.RemovalStarted:
+	case outcome == RemovalStarted:
 		return "Removing MVD. This window will close.", nil
-	case outcome == preferencespage.RemovalDeclined:
+	case outcome == RemovalDeclined:
 		return "Nothing was removed.", nil
 	}
 	return "This machine cannot ask for confirmation, so nothing was removed. Start MVD with -uninstall from a terminal.", nil
