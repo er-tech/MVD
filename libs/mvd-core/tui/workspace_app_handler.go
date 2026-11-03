@@ -37,6 +37,9 @@ type WorkspaceInput struct {
 	// them while they are open, and nil once they close: the host draws them, in every style,
 	// instead of the terminal look's popup.
 	Preferences func(*prefsform.Window)
+	// Remember, when set, is called with the file of the list, "" while it has none, when the app
+	// starts and whenever that changes, so the next start can open the same list again.
+	Remember func(path string)
 }
 
 // NewWorkspaceApp returns the app whose main screen is the workspace: the download list
@@ -66,6 +69,8 @@ type workspaceApp struct {
 	// last reported to Style.
 	modal *bool
 	style *string
+	// listed is the file of the list last reported to Remember.
+	listed *string
 }
 
 // Init returns the first commands of the workspace, and of the preferences when they are open.
@@ -89,6 +94,13 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if app, ok := next.(workspaceApp); ok && app.in.Style != nil {
 		next = app.report()
+	}
+	if app, ok := next.(workspaceApp); ok && app.in.Remember != nil {
+		if path := app.ws.ListPath(); app.listed == nil || *app.listed != path {
+			app.in.Remember(path)
+			app.listed = &path
+		}
+		next = app
 	}
 	return next, cmd
 }
