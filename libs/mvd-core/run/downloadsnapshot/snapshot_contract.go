@@ -86,7 +86,7 @@ type Glyph struct {
 type PlaylistRow struct {
 	Name  string
 	Count string
-	// Done and Total are the songs finished out of the songs of the link; Total is 0 while the link
+	// Done and Total are the songs downloaded out of the songs of the link; Total is 0 while the link
 	// is being read or cannot be, and Count is then the words that say so.
 	Done, Total int
 	Glyph       Glyph

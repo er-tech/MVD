@@ -211,9 +211,9 @@ func TestAnAddressBeingWrittenIsAQuestionOfTheWindow(t *testing.T) {
 	}
 }
 
-func TestTheWordsNextToASourceSayHowManySongsAreDone(t *testing.T) {
+func TestTheWordsNextToASourceSayHowManySongsAreDownloaded(t *testing.T) {
 	cases := map[string]downloadsnapshot.PlaylistRow{
-		"33 of 140 done": {Count: "33/140", Done: 33, Total: 140},
+		"33 of 140 downloaded": {Count: "33/140", Done: 33, Total: 140},
 		"reading":        {Count: "reading"},
 		"can't read":     {Count: "can't read"},
 	}

@@ -168,13 +168,13 @@ func (m Model) windowActivity() windowsnapshot.Activity {
 	return windowsnapshot.ActivityIdle
 }
 
-// sourceDetail is the words next to a source: how many of its songs are finished, or why not.
+// sourceDetail is the words next to a source: how many of its songs are downloaded, or why not.
 func sourceDetail(row downloadsnapshot.PlaylistRow) string {
 	if row.Total == 0 {
 		return row.Count
 	}
 
-	return fmt.Sprintf("%d of %d done", row.Done, row.Total)
+	return fmt.Sprintf("%d of %d downloaded", row.Done, row.Total)
 }
 
 // windowSources are the sources of the list.
