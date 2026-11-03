@@ -88,8 +88,11 @@ type PlaylistRow struct {
 	Count string
 	// Done and Total are the songs downloaded out of the songs of the link; Total is 0 while the link
 	// is being read or cannot be, and Count is then the words that say so.
-	Done, Total int
-	Glyph       Glyph
+	// Official is how many of them have an official video found, and wait to be accepted.
+	Done, Official, Total int
+	// Begun is whether the download of the link has started, as against only being looked up.
+	Begun bool
+	Glyph Glyph
 }
 
 // Progress is how far a song is, when it has begun.

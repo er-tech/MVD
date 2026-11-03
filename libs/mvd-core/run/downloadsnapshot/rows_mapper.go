@@ -21,7 +21,7 @@ func PlaylistRowsOf(s downloadsession.Session) []PlaylistRow {
 		} else if !pl.Listed {
 			count, total = "reading", 0
 		}
-		rows = append(rows, PlaylistRow{Name: PlaylistName(s, pl), Count: count, Done: s.State.PlaylistDownloaded(pl), Total: total, Glyph: playlistGlyph(s, pl)})
+		rows = append(rows, PlaylistRow{Name: PlaylistName(s, pl), Count: count, Done: s.State.PlaylistDownloaded(pl), Official: officialFoundIn(s, pl), Begun: s.State.PlaylistDownloadBegun(pl), Total: total, Glyph: playlistGlyph(s, pl)})
 	}
 
 	return rows

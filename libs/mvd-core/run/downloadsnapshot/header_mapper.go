@@ -93,6 +93,19 @@ func plannedCounts(s downloadsession.Session) (official, original int) {
 	return official, original
 }
 
+// officialFoundIn is how many songs of the link have an official video found, as the header counts
+// them for the whole list.
+func officialFoundIn(s downloadsession.Session, pl *runstate.Playlist) int {
+	n := 0
+	for _, id := range pl.Entries {
+		if en := s.State.Entries[id]; en != nil && en.State == engine.StatePlanned && songlist.FoundOfficial(en) {
+			n++
+		}
+	}
+
+	return n
+}
+
 // unreadableLinks is how many links could not be read at all: no song of them is counted, and for
 // the person it is a failure all the same.
 func unreadableLinks(s downloadsession.Session) int {
