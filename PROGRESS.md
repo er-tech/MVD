@@ -17,9 +17,11 @@ built an outline after every update, and a lost command at start left the list n
    question of the window").
 3. Delete the ANSI render code: `dialog`, `cells`, `look`, `keybar`, `lineedit` rendering, `menubar`,
    `screenview`, `View` functions, `Outline`, the terminal theme colours (`config.Colors`,
-   `ThemeName`, `prefsform` colour fields), `Backdrop`/`Modal`, golden tests. **Open.**
+   `ThemeName`, `prefsform` colour fields), `Backdrop`/`Modal`, golden tests. **Started:** the setup
+   screens and setup model (121 files, 8,300 lines) are gone. The rest is open, see "Next steps".
 4. Replace `tea.Msg` and `tea.Cmd` with a small runtime of our own; remove bubbletea, lipgloss and
-   the other terminal libraries from `go.mod`. **Open.**
+   the other terminal libraries from `go.mod`. **Started:** package `program` (Msg, Cmd, Model, Batch,
+   Tick, Quit, a headless runner) exists and is tested, and nothing uses it yet.
 
 ## Decisions
 
@@ -46,3 +48,20 @@ built an outline after every update, and a lost command at start left the list n
 
 Each launch saves a draft list in `%APPDATA%\mvd\lists` (`Untitled list 12.mvd` to `47`). They are
 not deleted; the person decides.
+
+## Next steps (found while sizing phases 3 and 4)
+
+- `deadcode` cannot find the render code: a `View()` called through an interface keeps every
+  `View()` alive. Delete by compiling instead: remove a package's `View`/`Render`, then fix the
+  callers.
+- `tea.Cmd` is a defined type and `tea.Msg` is `uv.Event`, so `program.Cmd` cannot replace it while
+  a Bubbles widget (`textinput`, `textarea`) still returns one. Remove the widgets first (the line
+  questions in `workspace`, `lineedit`, `prefspopup`), then swap `tea.Model/Cmd/Msg/Batch/Tick/Quit`
+  for the `program` ones and run `Start` on `program.New`.
+- The window sends intents, not keys or mouse events, so the key and mouse handling in `workspace`,
+  `run/download` and `menubar` is dead. About 200 uses of `tea.KeyPressMsg` and `tea.Mouse*Msg` in
+  tests go with it. Tests that read a behaviour out of the drawn text need a rewrite against
+  `Window()` snapshots, not a deletion.
+- Order: render and widgets in `workspace`; `run/download` screen; `prefspopup`, `menubar`, `dialog`,
+  `look`, `cells`, `keybar`, `lineedit`, `screenview`, `internal/cuppa`; then the runtime swap; then
+  `go mod tidy`.
