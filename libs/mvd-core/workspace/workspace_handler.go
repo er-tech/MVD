@@ -839,6 +839,9 @@ func (m *Model) openFolder() {
 	}
 }
 
+// ListPath is the file the list is kept in, "" while it has none.
+func (m Model) ListPath() string { return m.session.Path() }
+
 // draftPath is where a list that has no file yet is kept when it starts: "Untitled list.mvd" in
 // the app's folder of lists, or "Untitled list 2.mvd" and so on when that is taken. It is "" when
 // the host has no such folder, and the person is asked where to save the list then.

@@ -3,11 +3,13 @@ package terminalui
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"youtube-downloader/libs/mvd-core/config"
+	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/prefsform"
 	"youtube-downloader/libs/mvd-core/sourcelist"
 	"youtube-downloader/libs/mvd-core/tui"
@@ -47,6 +49,31 @@ func started(t *testing.T, dir string, files Files) (<-chan windowsnapshot.Snaps
 	Start(ctx, NewModelFactory(dir, files, host, t.Logf)())
 
 	return windows, prefs
+}
+
+func TestTheAppReopensTheListThatWasOpenWhenItQuit(t *testing.T) {
+	dir, files := testFiles(t, "https://old")
+	kept := downloadlist.New([]string{"https://a", "https://b", "https://c"})
+	path := filepath.Join(dir, "lists", "Untitled list.mvd")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := kept.Save(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := saveLastList(filepath.Join(dir, "last-list.txt"), path); err != nil {
+		t.Fatal(err)
+	}
+	windows, _ := started(t, dir, files)
+
+	select {
+	case snap := <-windows:
+		if snap.Sources.Heading != "3 sources" {
+			t.Errorf("sources: %q", snap.Sources.Heading)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the app showed no window")
+	}
 }
 
 func TestTheAppStartsOnTheSavedListWithNoTerminal(t *testing.T) {
