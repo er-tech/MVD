@@ -27,6 +27,12 @@
   box-shadow: var(--button-shadow);
   color: var(--button-text);
   font: inherit;
+  /* Centred by the box, not by the font: a pixel font and the symbol font have different line heights. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em; /* the space between a mark and the words, which a flex box drops */
+  line-height: 1;
   white-space: nowrap;
   cursor: default;
   transition: var(--button-transition);
