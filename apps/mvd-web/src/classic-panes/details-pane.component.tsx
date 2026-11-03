@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { DetailsSnapshot } from '../workspace-snapshot'
 
 interface DetailsPaneProps {
@@ -5,7 +6,7 @@ interface DetailsPaneProps {
 }
 
 /** What MVD says about the chosen song or source, in the theme's fixed-width font. */
-export function DetailsPane ({ details }: DetailsPaneProps) {
+export const DetailsPane = memo(function DetailsPane ({ details }: DetailsPaneProps) {
   return (
     <section className='classic-pane classic-details' aria-label={details.heading}>
       <h2 className='classic-pane-heading'>{details.heading}</h2>
@@ -14,4 +15,4 @@ export function DetailsPane ({ details }: DetailsPaneProps) {
       </div>
     </section>
   )
-}
+})

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Cell, Checkbox, Column, Row, Table, TableBody, TableHeader } from 'react-aria-components'
 import type { SongsSnapshot } from '../workspace-snapshot'
 import { ProgressBar } from './progress-bar.component'
@@ -9,7 +10,7 @@ interface SongsTableProps {
 }
 
 /** The songs of the chosen source: ticked to download, with their progress and status. */
-export function SongsTable ({ songs, onSelect, onTick }: SongsTableProps) {
+export const SongsTable = memo(function SongsTable ({ songs, onSelect, onTick }: SongsTableProps) {
   const selected = songs.rows[songs.selected]?.id
 
   return (
@@ -60,4 +61,4 @@ export function SongsTable ({ songs, onSelect, onTick }: SongsTableProps) {
       </div>
     </section>
   )
-}
+})
