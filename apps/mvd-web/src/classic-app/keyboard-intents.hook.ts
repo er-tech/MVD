@@ -9,8 +9,7 @@ const ownsKeyboard = (target: EventTarget | null): boolean =>
 /**
  * The window's keyboard: a menu entry's shortcut chooses it, as the menu would, and a plain letter
  * goes to MVD (d accepts a song, x rejects it...), as in the terminal look. The keys are taken
- * before the lists see them, so a letter does not also jump in a list. Off while a dialog or a
- * covered screen has the keyboard.
+ * before the lists see them, so a letter does not also jump in a list. Off while a dialog has the keyboard.
  */
 export function useKeyboardIntents (menus: MenuSnapshot[], onIntent: (intent: WorkspaceIntent) => void, enabled: boolean): void {
   useEffect(() => {

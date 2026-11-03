@@ -1,10 +1,9 @@
 import { useCallback, useMemo, type ReactNode } from 'react'
 import { AddMusicWindow } from '../add-music-window'
-import { layoutOf, type ClassicTheme } from '../classic-themes'
+import type { ClassicTheme } from '../classic-themes'
 import { DetailsPane, SongsTable, SourcesPane, type SourceAction } from '../classic-panes'
 import { ClassicWindow } from '../classic-window'
 import type { MenuSnapshot, WorkspaceIntent, WorkspaceSnapshot } from '../workspace-snapshot'
-import { CoveredScreen } from './covered-screen.component'
 import { useKeyboardIntents } from './keyboard-intents.hook'
 import { QuestionWindow } from './question-window.component'
 
@@ -14,8 +13,6 @@ interface ClassicAppProps {
   scheme?:         string
   snapshot:        WorkspaceSnapshot
   onIntent:        (intent: WorkspaceIntent) => void
-  /** Closes a screen only the terminal draws, as Esc does there; nil where none is drawn. */
-  onCloseCovered?: () => void
 }
 
 /** The Edit menu's entries that act on the source chosen, by their label, as its own menu calls them. */
@@ -36,9 +33,9 @@ function sourceActions (menus: MenuSnapshot[]): SourceAction[] {
  * screen the themes do not draw yet. It draws what the snapshot says and sends back what the
  * person does; MVD decides the rest.
  */
-export function ClassicApp ({ theme, scheme, snapshot, onIntent, onCloseCovered }: ClassicAppProps) {
-  const { covered, adding, question } = snapshot
-  useKeyboardIntents(snapshot.menus, onIntent, !covered && !adding && !question)
+export function ClassicApp ({ theme, scheme, snapshot, onIntent }: ClassicAppProps) {
+  const { adding, question } = snapshot
+  useKeyboardIntents(snapshot.menus, onIntent, !adding && !question)
   // The panes redraw only when what they are given changes, so what is given must stay the same between snapshots.
   const actions = useMemo(() => sourceActions(snapshot.menus), [snapshot.menus])
   const selectSource = useCallback((index: number) => onIntent({ kind: 'select-source', index }), [onIntent])
@@ -83,7 +80,6 @@ export function ClassicApp ({ theme, scheme, snapshot, onIntent, onCloseCovered 
         <SongsTable songs={snapshot.songs} onSelect={selectSong} onTick={tickSong} />
         <DetailsPane details={snapshot.details} />
       </ClassicWindow>
-      {covered && <CoveredScreen title={covered.title} layout={layoutOf(theme)} onClose={() => onCloseCovered?.()} />}
     </>
   )
 }

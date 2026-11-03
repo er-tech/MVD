@@ -3,11 +3,6 @@ import { sampleWorkspace } from '../theme-preview'
 import { AppWindow } from './app-window.component'
 import { PreferencesApp } from './preferences-app.component'
 
-jest.mock('../terminal-window', () => ({
-  TerminalWindow:    ({ look }: { look: string }) => <main data-testid='terminal' data-look={look} />,
-  sendTerminalInput: jest.fn(),
-}))
-
 /** The program, as the page sees it: events it sends, and the ones the page sent it. */
 function fakeProgram () {
   const listeners = new Map<string, ((...data: unknown[]) => void)[]>()
@@ -40,8 +35,6 @@ const preferences = {
   colours: { background: '', accent: '#ff2a6d', focus: '', highlight: '', success: '', error: '', dim: '', text: '', selected: '' },
 }
 
-const look = (): string | undefined => screen.getByTestId('terminal').dataset.look
-
 describe('AppWindow', () => {
   // The classic look and the preferences are loaded on demand; loading them once first keeps the
   // first test from waiting on it.
@@ -51,24 +44,23 @@ describe('AppWindow', () => {
 
   beforeEach(() => {
     if (!('CSS' in globalThis)) Reflect.set(globalThis, 'CSS', { escape: (text: string) => text, supports: () => false })
-    // jsdom has no ResizeObserver, which the dialog of a covered screen watches itself with.
+    // jsdom has no ResizeObserver, which the dialogs watch themselves with.
     if (!('ResizeObserver' in globalThis)) Reflect.set(globalThis, 'ResizeObserver', class { observe (): void {} disconnect (): void {} })
   })
 
   afterEach(() => Reflect.deleteProperty(globalThis, 'runtime'))
 
-  it('asks the program for the style and stays the terminal look while it is the DOS one', () => {
+  it('asks the program for the style and draws nothing until it has the style and the window', () => {
     const program = fakeProgram()
     render(<AppWindow />)
     expect(program.sent.map(([name]) => name)).toContain('mvd:style-request')
 
-    program.send('mvd:style', 'dos')
-    program.send('mvd:snapshot', JSON.stringify(sampleWorkspace))
-    expect(look()).toBe('page')
+    program.send('mvd:style', 'windows-95')
     expect(document.querySelector('.classic-window')).toBeNull()
+    program.send('mvd:snapshot', JSON.stringify(sampleWorkspace))
   })
 
-  it('draws the classic window from what the program sends, with the terminal running behind it', async () => {
+  it('draws the classic window from what the program sends', async () => {
     const program = fakeProgram()
     render(<AppWindow />)
     program.send('mvd:style', JSON.stringify({ style: 'windows-95', scheme: 'brick' }))
@@ -76,7 +68,6 @@ describe('AppWindow', () => {
 
     // The classic look is loaded on demand, the first time slowly.
     expect(await screen.findByRole('button', { name: '+ Add source' }, { timeout: 5000 })).toBeTruthy()
-    expect(look()).toBe('behind')
     expect(document.documentElement.dataset.scheme).toBe('brick')
 
     fireEvent.click(screen.getByRole('button', { name: '+ Add source' }))
@@ -97,20 +88,10 @@ describe('AppWindow', () => {
     expect(intents).toEqual([{ kind: 'menu', id: 'add-source' }, { kind: 'key', key: 'd' }])
   })
 
-  it('shows the terminal in a dialog of the theme for a screen the themes do not draw yet', async () => {
-    const program = fakeProgram()
-    render(<AppWindow />)
-    program.send('mvd:style', 'mac-os-9')
-    program.send('mvd:snapshot', JSON.stringify({ ...sampleWorkspace, covered: { title: 'Preferences' } }))
-
-    expect(await screen.findByRole('region', { name: 'Preferences' }, { timeout: 5000 })).toBeTruthy()
-    expect(look()).toBe('inset')
-  })
-
   it('cannot be used while the preferences are open in their own window', () => {
     const program = fakeProgram()
     render(<AppWindow />)
-    program.send('mvd:style', 'dos')
+    program.send('mvd:style', 'windows-95')
     expect(document.querySelector('.app-window')?.hasAttribute('inert')).toBe(false)
 
     program.send('mvd:prefs', JSON.stringify(preferences))
@@ -137,7 +118,6 @@ describe('AppWindow', () => {
     }))
 
     const alert = await screen.findByRole('alertdialog', { name: 'Quit MVD?' }, { timeout: 5000 })
-    expect(look()).toBe('behind')
     // A Mac puts the default button last.
     expect(within(alert).getAllByRole('button').map(button => button.textContent)).toEqual(['Quit', 'Keep downloading'])
     fireEvent.click(within(alert).getByRole('button', { name: 'Quit' }))
@@ -157,12 +137,12 @@ describe('PreferencesApp', () => {
     const program = fakeProgram()
     render(<PreferencesApp />)
     expect(program.sent.map(([name]) => name)).toContain('mvd:style-request')
-    program.send('mvd:style', 'dos')
+    program.send('mvd:style', 'windows-95')
     program.send('mvd:prefs', JSON.stringify(preferences))
 
     expect(await screen.findByRole('dialog', { name: 'Preferences' }, { timeout: 5000 })).toBeTruthy()
     expect(document.querySelector('.preferences-own-window')).not.toBeNull()
-    expect(document.documentElement.dataset.family).toBe('dos')
+    expect(document.documentElement.dataset.family).toBe('windows-classic')
 
     // The Close button at the bottom, not the one of the title bar.
     fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).find(button => button.classList.contains('classic-button')) as HTMLElement)
@@ -174,7 +154,7 @@ describe('PreferencesApp', () => {
   it('shows nothing until the program has the preferences open', () => {
     const program = fakeProgram()
     const { container } = render(<PreferencesApp />)
-    program.send('mvd:style', 'dos')
+    program.send('mvd:style', 'windows-95')
 
     expect(container.children).toHaveLength(0)
   })

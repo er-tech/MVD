@@ -25,7 +25,7 @@ function readStyle (value: unknown): WindowStyle | null {
 }
 
 /**
- * The window style the settings have ('dos' for the terminal look or a classic theme's id) with
+ * The window style the settings have (a classic theme's id) with
  * its colour scheme, or null until the program has said. The page asks when it starts, as it may
  * start after the program told it, and follows each change made in the preferences.
  */

@@ -9,7 +9,7 @@ func TestTheWindowStyleIsKeptInTheFileAndAnUnknownOneIsIgnored(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.conf")
 	cfg := Default(dir, dir)
-	if cfg.WindowStyle != WindowStyleDOS {
+	if cfg.WindowStyle != DefaultWindowStyle {
 		t.Fatalf("a new config starts with %q", cfg.WindowStyle)
 	}
 	cfg.WindowStyle = "mac-os-9"

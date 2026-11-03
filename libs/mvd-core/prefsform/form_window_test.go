@@ -42,15 +42,14 @@ func TestTheWindowShowsTheTabsAndTheSettingsOfTheOneShown(t *testing.T) {
 		t.Fatalf("tabs %v, tab %d", w.Tabs, w.Tab)
 	}
 	style := w.Fields[0]
-	if style.Kind != WindowChoice || style.Value != config.WindowStyleDOS || style.Options[1].Label != "Windows 3.1" {
+	if style.Kind != WindowChoice || style.Value != config.DefaultWindowStyle || style.Options[1].Label != "Windows 95" {
 		t.Fatalf("window style = %+v", style)
 	}
-	if scheme := w.Fields[1]; scheme.Label != "Colour scheme" || !scheme.Hidden {
-		t.Errorf("the terminal look shows a classic colour scheme: %+v", scheme)
+	if scheme := w.Fields[1]; scheme.Label != "Colour scheme" {
+		t.Errorf("the second field is not the colour scheme: %+v", scheme)
 	}
-	theme := w.Fields[2]
-	if theme.Kind != WindowChoice || theme.Hidden || len(theme.Options[0].Swatches) == 0 {
-		t.Errorf("the theme's options have no colours: %+v", theme.Options[0])
+	if len(w.Fields) != 2 {
+		t.Errorf("the terminal themes are offered: %d fields", len(w.Fields))
 	}
 	if w.Colours.Accent == "" {
 		t.Error("the window does not carry the terminal look's colours")

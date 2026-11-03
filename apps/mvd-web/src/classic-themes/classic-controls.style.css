@@ -12,10 +12,6 @@
   --text-hint: color-mix(in srgb, var(--text) 72%, transparent);
 }
 
-:root[data-family='dos'] {
-  --text-hint: var(--text-dim);
-}
-
 /* The mark in front of a button's words, from a font that has it (Lucida Grande has no play triangle). */
 .classic-glyph {
   font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Arial Unicode MS', 'DejaVu Sans', sans-serif;

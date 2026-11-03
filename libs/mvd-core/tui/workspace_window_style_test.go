@@ -25,13 +25,6 @@ func styledApp(t *testing.T, style string) (workspaceApp, *[]string, *[]windowsn
 	return next.(workspaceApp), styles, windows
 }
 
-func TestTheTerminalLookIsReportedAndDrawsNoWindow(t *testing.T) {
-	_, styles, windows := styledApp(t, "")
-	if len(*styles) != 1 || (*styles)[0] != config.WindowStyleDOS+"/" || len(*windows) != 0 {
-		t.Errorf("styles %v, %d windows", *styles, len(*windows))
-	}
-}
-
 func TestAClassicStyleGetsWhatTheWindowShows(t *testing.T) {
 	a, styles, windows := styledApp(t, "mac-os-9")
 	if len(*styles) != 1 || (*styles)[0] != "mac-os-9/default" || len(*windows) != 1 {
@@ -42,9 +35,9 @@ func TestAClassicStyleGetsWhatTheWindowShows(t *testing.T) {
 	// Another style chosen reaches the host at the next change.
 	app := next.(workspaceApp).closePrefs(false)
 	changed := app.cfg
-	changed.WindowStyle = config.WindowStyleDOS
+	changed.WindowStyle = "windows-xp"
 	app.apply(changed, false).Update(tea.KeyPressMsg{})
-	if (*styles)[len(*styles)-1] != config.WindowStyleDOS+"/" {
+	if (*styles)[len(*styles)-1] != "windows-xp/blue" {
 		t.Errorf("styles %v", *styles)
 	}
 }

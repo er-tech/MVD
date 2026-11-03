@@ -1,6 +1,5 @@
 import { lazy, Suspense, useCallback, type ComponentProps } from 'react'
 import type { ClassicApp } from '../classic-app'
-import { sendTerminalInput, TerminalWindow, type TerminalLook } from '../terminal-window'
 import { askWindow } from '../window-actions'
 import type { WorkspaceIntent } from '../workspace-snapshot'
 import { useLivePreferences } from './live-preferences.hook'
@@ -20,14 +19,9 @@ const ClassicLook = lazy(async () => {
   return { default: Look }
 })
 
-/** Esc, as the terminal reads it: it closes the screen the terminal shows. */
-const escape = '\u{1B}'
-
 /**
- * MVD's window, in the style the preferences say: the terminal look, or a classic system's window
- * drawn from what the program sends. The terminal stays mounted either way, so MVD keeps running
- * behind a classic window and shows through it for the screens the themes do not draw yet. The
- * preferences are a window of their own (see PreferencesApp); while it is open this one cannot be used.
+ * MVD's window, in the style the preferences say: a classic system's window drawn from what the
+ * program sends. The preferences are a window of their own (see PreferencesApp); while it is open this one cannot be used.
  */
 export function AppWindow () {
   const chosen = useWindowStyle()
@@ -35,9 +29,6 @@ export function AppWindow () {
   const scheme = chosen?.scheme || undefined
   const [snapshot, send] = useLiveSnapshot()
   const [prefs] = useLivePreferences()
-  const classic = style !== null && style !== 'dos' && snapshot !== null
-  let look: TerminalLook = 'page'
-  if (classic) look = snapshot.covered ? 'inset' : 'behind'
 
   const onIntent = useCallback((intent: WorkspaceIntent) => {
     if (intent.kind === 'window') {
@@ -50,11 +41,10 @@ export function AppWindow () {
 
   return (
     <div className='app-window' inert={prefs !== null}>
-      <TerminalWindow look={look} />
-      {classic && (
+      {style !== null && snapshot !== null && (
         <div className='app-window-classic'>
           <Suspense>
-            <ClassicLook style={style} scheme={scheme} snapshot={snapshot} onIntent={onIntent} onCloseCovered={() => sendTerminalInput(escape)} />
+            <ClassicLook style={style} scheme={scheme} snapshot={snapshot} onIntent={onIntent} />
           </Suspense>
         </div>
       )}

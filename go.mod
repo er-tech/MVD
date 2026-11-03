@@ -10,7 +10,6 @@ require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/x/ansi v0.11.9
 	github.com/mattn/go-runewidth v0.0.30
-	github.com/meta-ui-labs/treactui/packages/tty-go v0.1.5
 	github.com/wailsapp/wails/v3 v3.0.0
 	golang.org/x/sys v0.48.0
 	golang.org/x/term v0.46.0

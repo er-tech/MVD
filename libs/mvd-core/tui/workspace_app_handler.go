@@ -98,7 +98,7 @@ func (a workspaceApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (a workspaceApp) report() workspaceApp {
 	style := a.cfg.WindowStyle
 	if !config.ValidWindowStyle(style) {
-		style = config.WindowStyleDOS
+		style = config.DefaultWindowStyle
 	}
 	scheme := config.WindowSchemeOf(style, a.cfg.WindowScheme)
 	if reported := style + "/" + scheme; a.style == nil || *a.style != reported {
@@ -114,7 +114,7 @@ func (a workspaceApp) report() workspaceApp {
 			a.in.Preferences(nil)
 		}
 	}
-	if style == config.WindowStyleDOS || a.in.Window == nil {
+	if a.in.Window == nil {
 		return a
 	}
 	a.in.Window(a.ws.Window())
@@ -123,16 +123,21 @@ func (a workspaceApp) report() workspaceApp {
 }
 
 func (a workspaceApp) update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// sizeCmd is what the workspace asked for when it was told the size: it can start loading the
+	// list, and a command that is dropped leaves the workspace waiting for a start that never comes.
+	var sizeCmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		a.width, a.height = msg.Width, msg.Height
 		// The workspace behind the preferences needs the size too: on the first start the
 		// preferences are open at once, and it would never be drawn.
-		next, _ := a.ws.Update(msg)
+		next, cmd := a.ws.Update(msg)
 		a.ws = next.(workspace.Model)
-		if a.inPrefs {
-			a.prefs = a.prefs.SetSize(a.bodySize())
+		if !a.inPrefs {
+			return a, cmd
 		}
+		a.prefs = a.prefs.SetSize(a.bodySize())
+		sizeCmd = cmd
 	case workspace.PreferencesRequestedMsg:
 		a = a.openPrefs()
 		return a, a.prefs.Init()
@@ -179,7 +184,7 @@ func (a workspaceApp) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.prefs, cmd = a.prefs.Update(msg)
 		// Each change is kept and goes to the run at once; the places the files go to and
 		// the pattern of their names wait for the person to confirm with save.
-		return a.apply(a.prefs.Config(), false), cmd
+		return a.apply(a.prefs.Config(), false), tea.Batch(sizeCmd, cmd)
 	}
 	next, cmd := a.ws.Update(msg)
 	a.ws = next.(workspace.Model)
@@ -278,8 +283,12 @@ func (a workspaceApp) Outline() ScreenOutline {
 	return a.ws.Outline()
 }
 
-// View returns the workspace as a terminal view, with the preferences drawn over it when open.
+// View is empty when a host draws the window. Without one it is the workspace as a terminal view,
+// with the preferences drawn over it when open.
 func (a workspaceApp) View() tea.View {
+	if a.in.Window != nil {
+		return screenview.Of("") // the host draws the window from what Update reports
+	}
 	if !a.inPrefs {
 		return a.ws.View()
 	}
