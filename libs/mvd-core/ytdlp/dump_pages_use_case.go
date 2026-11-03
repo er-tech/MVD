@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"youtube-downloader/libs/mvd-core/procwindow"
+	"youtube-downloader/libs/mvd-core/ytdlpgate"
 )
 
 // Page is one response yt-dlp fetched while extracting a URL.
@@ -25,6 +26,12 @@ func DumpPages(ctx context.Context, bin, url string, extraArgs []string) ([]Page
 	args := []string{"--dump-pages", "--simulate", "--skip-download", "--no-playlist", "--no-warnings"}
 	args = append(args, extraArgs...)
 	args = append(args, url)
+
+	release, gateErr := ytdlpgate.Acquire(ctx)
+	if gateErr != nil {
+		return nil, gateErr
+	}
+	defer release()
 
 	cmd := exec.CommandContext(ctx, bin, args...)
 	procwindow.Hide(cmd)

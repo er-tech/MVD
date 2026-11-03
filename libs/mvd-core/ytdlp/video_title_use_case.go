@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"youtube-downloader/libs/mvd-core/procwindow"
+	"youtube-downloader/libs/mvd-core/ytdlpgate"
 )
 
 // VideoTitle asks yt-dlp for the title of a video, without downloading it.
@@ -14,6 +15,12 @@ func VideoTitle(ctx context.Context, bin, videoID string, extraArgs []string) (s
 	args := []string{"--print", "%(title)s", "--no-playlist", "--skip-download", "--no-warnings"}
 	args = append(args, extraArgs...)
 	args = append(args, "https://www.youtube.com/watch?v="+videoID)
+
+	release, gateErr := ytdlpgate.Acquire(ctx)
+	if gateErr != nil {
+		return "", gateErr
+	}
+	defer release()
 
 	cmd := exec.CommandContext(ctx, bin, args...)
 	procwindow.Hide(cmd)

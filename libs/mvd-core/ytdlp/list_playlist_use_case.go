@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"youtube-downloader/libs/mvd-core/procwindow"
+	"youtube-downloader/libs/mvd-core/ytdlpgate"
 )
 
 // ListPlaylist asks yt-dlp for the contents of a playlist without
@@ -15,6 +16,12 @@ func ListPlaylist(ctx context.Context, bin, playlistURL string, extraArgs []stri
 	args := []string{"--flat-playlist", "-j", "--no-warnings"}
 	args = append(args, extraArgs...)
 	args = append(args, playlistURL)
+
+	release, gateErr := ytdlpgate.Acquire(ctx)
+	if gateErr != nil {
+		return nil, gateErr
+	}
+	defer release()
 
 	cmd := exec.CommandContext(ctx, bin, args...)
 	procwindow.Hide(cmd)

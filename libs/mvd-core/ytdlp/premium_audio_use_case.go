@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"youtube-downloader/libs/mvd-core/procwindow"
+	"youtube-downloader/libs/mvd-core/ytdlpgate"
 )
 
 // premiumAudioIDs are the format ids YouTube Music serves at about 256 kbps, and only
@@ -17,6 +18,12 @@ var premiumAudioIDs = map[string]bool{"141": true, "774": true}
 func HasPremiumAudio(ctx context.Context, bin, cookieFile, videoURL string, extraArgs []string) bool {
 	args := []string{"--cookies", cookieFile, "-F", "--no-warnings", "--quiet"}
 	args = append(args, extraArgs...)
+	release, gateErr := ytdlpgate.Acquire(ctx)
+	if gateErr != nil {
+		return false
+	}
+	defer release()
+
 	cmd := exec.CommandContext(ctx, bin, append(args, videoURL)...)
 	procwindow.Hide(cmd)
 	out, err := cmd.Output()
