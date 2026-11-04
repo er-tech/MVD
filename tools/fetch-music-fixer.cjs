@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Downloads Metil's music-fixer for this machine's GOOS/GOARCH into
+// Downloads Loomas's music-fixer for this machine's GOOS/GOARCH into
 // libs/mvd-core/musicfixer/bundle, where the Go build embeds it. Without a token or a
 // release the build goes on without it, and the feature is off in that build.
 'use strict'
@@ -9,11 +9,11 @@ const { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } = require('
 const { tmpdir } = require('node:os')
 const { join } = require('node:path')
 
-const REPO = 'er-tech/Metil'
-// The release the bundle comes from. Metil's latest release is another product, so it is pinned.
+const REPO = 'loomas-apps/Loomas'
+// The release the bundle comes from. Loomas's latest release is another product, so it is pinned.
 const TAG = process.env.MUSIC_FIXER_TAG || 'music-fixer-v0.3.0'
 const goenv = k => spawnSync('go', ['env', k], { encoding: 'utf8' }).stdout.trim()
-// Metil names its files by system and processor, not by Go's GOOS and GOARCH.
+// Loomas names its files by system and processor, not by Go's GOOS and GOARCH.
 const OS = new Map([['windows', 'windows'], ['darwin', 'macos'], ['linux', 'linux']])
 const CPU = new Map([['amd64', 'x64'], ['arm64', 'arm64']])
 const goName = `music-fixer-${goenv('GOOS')}-${goenv('GOARCH')}.zip`
@@ -25,13 +25,13 @@ function skip (why) {
   process.exit(0)
 }
 
-if (!process.env.METIL_TOKEN) skip('no METIL_TOKEN')
-if (!OS.has(goenv('GOOS')) || !CPU.has(goenv('GOARCH'))) skip('Metil has no music-fixer for this system')
+if (!process.env.LOOMAS_TOKEN) skip('no LOOMAS_TOKEN')
+if (!OS.has(goenv('GOOS')) || !CPU.has(goenv('GOARCH'))) skip('Loomas has no music-fixer for this system')
 mkdirSync(dir, { recursive: true })
 const work = mkdtempSync(join(tmpdir(), 'music-fixer-'))
 try {
   const r = spawnSync('gh', ['release', 'download', TAG, '-R', REPO, '-p', `${name}*`, '-D', work, '--clobber'], {
-    stdio: 'inherit', env: { ...process.env, GH_TOKEN: process.env.METIL_TOKEN },
+    stdio: 'inherit', env: { ...process.env, GH_TOKEN: process.env.LOOMAS_TOKEN },
   })
   if (r.status !== 0) skip(`no ${name} in ${REPO} ${TAG}`)
   const want = readFileSync(join(work, `${name}.sha256`), 'utf8').trim().split(/\s+/, 1)[0].toLowerCase()

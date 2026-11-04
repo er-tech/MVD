@@ -157,7 +157,7 @@ Each song is then found on YouTube exactly as the songs of a Spotify playlist ar
 
 ### Best audio on the video
 
-Set `better_audio=yes` in `config.conf`, or choose *Best Audio On The Video* in the preferences. For every official video MVD downloads, it then fetches the best audio of the same song, and the music-fixer app (made with [Metil](https://github.com/er-tech/Metil), embedded in the release build) recreates the video with that sound, lined up with the picture. The new video replaces the downloaded one only when every step worked; otherwise the downloaded video stays as it is. It adds time to every song and needs ffmpeg, which MVD installs. It is off by default.
+Set `better_audio=yes` in `config.conf`, or choose *Best Audio On The Video* in the preferences. For every official video MVD downloads, it then fetches the best audio of the same song, and the music-fixer app (made with [Loomas](https://github.com/loomas-apps/Loomas), embedded in the release build) recreates the video with that sound, lined up with the picture. The new video replaces the downloaded one only when every step worked; otherwise the downloaded video stays as it is. It adds time to every song and needs ffmpeg, which MVD installs. It is off by default.
 
 ### Official music video mode
 
