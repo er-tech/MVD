@@ -40,7 +40,6 @@ import (
 	"youtube-downloader/libs/mvd-core/tui"
 	"youtube-downloader/libs/mvd-core/workspace"
 	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
-	"youtube-downloader/libs/mvd-core/ytdlp"
 	"youtube-downloader/libs/mvd-core/ytdlp/fetch"
 )
 
@@ -179,13 +178,8 @@ func run(movedFrom string, askToMove bool, review string) error {
 		List:   filepath.Join(appDir, "list.txt"),
 		Review: review,
 	}, terminalui.Host{
-		Start:        terminalRuns.Start(ctx, ytDlpPath, logf),
-		StartList:    terminalRuns.StartList(ctx, ytDlpPath, logf),
-		Plan:         terminalRuns.StartPlan(ctx, ytDlpPath, logf),
-		PlanDownload: terminalRuns.StartPlanDownload(ctx, ytDlpPath, logf),
-		Describe: func(videoID string) (string, error) {
-			return ytdlp.VideoTitle(ctx, ytDlpPath, videoID, nil)
-		},
+		Start:     terminalRuns.Start(ctx, ytDlpPath, logf),
+		StartList: terminalRuns.StartList(ctx, ytDlpPath, logf),
 		// The person is at this machine, so its own folder chooser is the one to show.
 		PickFolder: func(start string) (string, bool, error) { return folderdialog.Dialog{}.Pick(ctx, start) },
 		PickFile: func(start string) (string, bool, error) {

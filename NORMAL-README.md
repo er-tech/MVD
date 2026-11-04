@@ -24,13 +24,13 @@ A lightweight, zero-setup, concurrent Go application: a desktop app (`mvd`) with
 * **Updates**: Looks once a day for a newer MVD (Help > Check for updates) and keeps yt-dlp and ffmpeg current.
 * **Your colours**: The interface colours are configurable, in the app or in `config.conf`.
 * **Auto-retry**: Retries one-off failures at once and rate-limited ones in a sweep after the backlog finishes; never retries permanently gone videos.
-* **Full Screen Interface**: A fixed terminal UI shows every playlist and entry with its state, live progress of the running downloads, global counters (queue, running, done, official, duplicates, failed) and the yt-dlp output of whatever you select. Failed entries can be retried from the screen. Pipes and CI get a plain log instead. While files are coming in, the header also shows the speed of all of them together and how many files and how many parts of them (the fragments of a stream, up to `concurrent_fragments`) are being fetched at once.
+* **Full Screen Interface**: The window shows every playlist and entry with its state, live progress of the running downloads, global counters (queue, running, done, official, duplicates, failed) and the yt-dlp output of whatever you select. Failed entries can be retried from the screen. Pipes and CI get a plain log instead (`--no-tui`). While files are coming in, the header also shows the speed of all of them together and how many files and how many parts of them (the fragments of a stream, up to `concurrent_fragments`) are being fetched at once.
 
 ---
 
 ## 🌐 The desktop app (`mvd`)
 
-`apps/mvd` builds the program `mvd`, the main app: a window of its own showing the terminal interface (the terminal look, described after this section), on the same engine. It is a normal program: closing the window quits it (it asks first when downloads are still running). The window's page and its connection are Wails' own (no local server, no port), so nothing listens on the network. Starting it again raises the window that is already open instead of opening a second one. Paste links into it at any time, including while it is downloading (`a`).
+`apps/mvd` builds the program `mvd`, the main app: a window of its own, drawn by a web page from what the program reports, on the same engine. It is a normal program: closing the window quits it (it asks first when downloads are still running). The window's page and its connection are Wails' own (no local server, no port), so nothing listens on the network. Starting it again raises the window that is already open instead of opening a second one. Paste links into it at any time, including while it is downloading.
 
 ```powershell
 smith run build -p mvd          # builds the React page, embeds it, builds the binary
@@ -68,49 +68,25 @@ The macOS and Linux paths, and the `.dmg`, are covered by unit tests and CI only
 
 Starting it a second time opens the running one instead. The server only answers to `localhost`: a request is refused unless its Host is a loopback name, any Origin is a loopback page, and anything that changes state is `application/json`, so a web page on another site cannot read your queue or add to it.
 
-**The terminal window.** Starting the app opens the terminal interface in a window of its own: the screens of `libs/mvd-core/tui` (download list, preferences, downloads), carried by [TReactUI](https://github.com/meta-ui-labs/treactui) over the window's own events (`apps/mvd/terminalui`, with the page from `apps/mvd-web`). The window is drawn by the system's web view through [Wails](https://wails.io) v2, so no browser has to be installed: WebView2 on Windows (part of Windows 11 and of current Windows 10; Wails offers to install it where it is missing), WKWebView on macOS, and WebKitGTK 4.1 on Linux (`libwebkit2gtk-4.1`, found in the package manager of current distributions). It is one window: closing it quits the app, after asking when downloads are running, and starting the app again raises the open window. It has the mouse (click a key hint or a row, wheel to scroll) and paste. The web view's own shortcuts are kept from firing while the window is focused, so Ctrl+P opens the preferences instead of the print dialog. It reads and writes the same `config.conf` and `list.txt` as the terminal app. Keys: `a` adds links to a running download, and on the preferences `m` moves the app to its own folder, `u` uninstalls and the folder settings open the system's own folder chooser.
+**The window.** Starting the app opens one window. The Go program runs the app model with no terminal: it reports what the window shows as a snapshot (`libs/mvd-core/workspace/windowsnapshot`) and the page (`apps/mvd-web`) draws it in the style chosen in the preferences. The page sends back what the person does as intents: a menu entry, a button, a chosen row, text for a question. The window is drawn by the system's web view through [Wails](https://wails.io), so no browser has to be installed: WebView2 on Windows (part of Windows 11 and of current Windows 10; Wails offers to install it where it is missing), WKWebView on macOS, and WebKitGTK 4.1 on Linux (`libwebkit2gtk-4.1`, found in the package manager of current distributions). Closing the window quits the app, after asking when downloads are running. Starting the app again raises the open window. The web view's own shortcuts are kept from firing while the window is focused. The window reads and writes the same `config.conf` and `list.txt` as before. The plain letter keys `j k f t r d D x o` and Space work on the songs, and the shortcut of a menu entry chooses it.
 
-The page is `apps/mvd-web` (React: the 90s header with its pixel-art logo and the *About this app* window (pictured below), above `<TTY>` from [`@treactui/tty`](https://www.npmjs.com/package/@treactui/tty) filling the rest); `apps/mvd/appwindow` shows it in the Wails 3 window: Wails serves the built page itself (embedded from `appwindow/web`, which the `stage-web` target fills) and the page talks to the Go program through Wails events, with no server, port or WebSocket (`createWailsSocket` on the page, `ttygo.BindShared` in Go); the terminal interface is `apps/mvd/terminalui`, which builds the app model of `libs/mvd-core/tui` as a program shared by every page load. The page works only inside the window. `mvd -uninstall` asks and removes in its own process; a copy that is running keeps running until it is closed, since removing the program just moves it aside. The old flags `-addr`, `-no-window`, `-no-browser` and `-no-tray` are still accepted and do nothing. Single instance is Wails' own: a second start finds the first and raises its window. The preferences are a window of their own: the program opens a second Wails window on the same page (`/?window=preferences`, see `apps/mvd/appwindow/preferences_window_client.go`), the main window cannot be used while it is open, and closing it by any means asks the program to close the preferences. The app needs a C toolchain to build on macOS and Linux (the web views are native), which is why it is built on a runner of each OS; on Linux the build needs `libgtk-3-dev` and `libwebkit2gtk-4.1-dev` and the tags `production,gtk3` (Wails 3 builds for GTK 4 unless told `gtk3`) (set in `apps/mvd/project.json`); Windows builds without a C compiler. The Windows release is a windowed program, so no console window opens next to the window; a start-up error is shown in a message box instead, and when it is started from a terminal it also prints there. That comes from `-H=windowsgui` in the `build-native` task of `smith.toml`, and from `libs/mvd-core/procwindow`, which keeps yt-dlp and the folder chooser from opening console windows of their own. Plain `smith run build -p mvd` and `go run` stay console builds, so you see the logs.
+The page is `apps/mvd-web` (React: the window of the chosen style, its menus, toolbar, lists and dialogs). `apps/mvd/appwindow` shows it in the Wails 3 window: Wails serves the built page itself (embedded from `appwindow/web`, which the `stage-web` target fills) and the page talks to the Go program through Wails events, with no server, port or WebSocket. The app model is built by `apps/mvd/terminalui` and runs on `libs/mvd-core/program`, a small runtime of messages and commands. The app keeps the file of the open list in `last-list.txt` and opens it again at the next start. The page works only inside the window. `mvd -uninstall` asks and removes in its own process; a copy that is running keeps running until it is closed, since removing the program just moves it aside. The old flags `-addr`, `-no-window`, `-no-browser` and `-no-tray` are still accepted and do nothing. Single instance is Wails' own: a second start finds the first and raises its window. The preferences are a window of their own: the program opens a second Wails window on the same page (`/?window=preferences`, see `apps/mvd/appwindow/preferences_window_client.go`), the main window cannot be used while it is open, and closing it by any means asks the program to close the preferences. The app needs a C toolchain to build on macOS and Linux (the web views are native), which is why it is built on a runner of each OS; on Linux the build needs `libgtk-3-dev` and `libwebkit2gtk-4.1-dev` and the tags `production,gtk3` (Wails 3 builds for GTK 4 unless told `gtk3`) (set in `apps/mvd/project.json`); Windows builds without a C compiler. The Windows release is a windowed program, so no console window opens next to the window; a start-up error is shown in a message box instead, and when it is started from a terminal it also prints there. That comes from `-H=windowsgui` in the `build-native` task of `smith.toml`, and from `libs/mvd-core/procwindow`, which keeps yt-dlp and the folder chooser from opening console windows of their own. Plain `smith run build -p mvd` and `go run` stay console builds, so you see the logs.
 
 <p align="center">
   <img src="assets/screenshots/about-this-app.png" alt="The About this app window" width="560">
 </p>
 
-## 🖥️ The terminal look (the default window style)
+## 🖥️ The main window
 
-```
-╭─ MVD · Music Video Downloader ──────────────────────────────────────── 00:12:41 ─╮
-│ Queue 82   ⠋ Running 3   ✓ Done 57   ⇄ Official 41   ≡ Dup 3   ✗ Failed 2        │
-╰──────────────────────────────────────────────────────────────────────────────────╯
-╭─ Playlists ───────────────── 3 ─╮╭─ 90s UK Dance Hits › 07 Stardust ──── follow ─╮
-│▸ 90s UK Dance Hits    23/90  ⠋  ││[official] hRvrj_diWYQ -> 5dYAQEAyE1E          │
-│  Ibiza Classics       44/44  ✓  ││[youtube] 5dYAQEAyE1E: Downloading webpage     │
-│  Trance Anthems        0/61  ·  ││[info] Downloading format 137+251              │
-╰─────────────────────────────────╯│[download] Destination: ...                    │
-╭─ Entries ────────────────── 90 ─╮│                                               │
-│✓ 01 You Don't Know Me        ⇄  ││                                               │
-│✓ 02 Don't Call Me Baby       ⇄  ││                                               │
-│✓ 03 Modjo - Lady                ││                                               │
-│✗ 04 Bob Sinclar - I Feel   ERR  ││                                               │
-│≡ 05 Bob Sinclar (Radio)    dup  ││                                               │
-│⟲ 06 The Bucketheads       res.  ││                                               │
-│⠋ 07 Stardust               34%  ││ ████████░░░░░░░░░░░  34.2% of 112.4MiB at ... │
-│· 08 Daft Punk                   ││                                               │
-╰─────────────────────────────────╯╰───────────────────────────────────────────────╯
- ↑↓ move  tab pane  ⏎ follow  f failed  r retry  l full log  ? help  q quit
-```
+The window has a menu bar (File, Edit, Run, Help), a row of buttons, the sources of the list on the left, the songs on the right and the details of the selected song below.
 
-* **Header**: global counters and elapsed time. `FINISHED` appears when the queue is empty.
-* **Playlists**: one row per URL with `done/total`. The selected playlist drives the entries pane.
-* **Entries**: every track of the selected playlist. Glyphs: `·` queued, `⟲` resolving the official video, `⠋` downloading, `⚙` merging, `✓` done, `≡` duplicate skipped, `✗` failed. The right hand tag shows `⇄` when the official video replaced the art track, the download percentage, `dup`, `res.`, `merge` or `ERR`.
-* **Output**: the yt-dlp log of the selected entry with a progress bar, speed and ETA. Select a playlist to see its combined log.
-* **Keys**: `↑ ↓` move, `tab` switch pane, `enter` toggle follow mode (the selection jumps to whatever starts downloading), `f` show failed entries only, `r` retry the selected failed entry (or every failed entry of the playlist when the playlists pane is focused), `l` full screen output, `?` help, `ctrl+l` redraw the screen, `q` quit.
+* **Status line**: the notice of the last action, or the counters of the run: queue, running, done, official, duplicates and failed.
+* **Sources**: one row per link. Before the download starts the row says how many songs have an official video found. After it starts, the row says how many songs are downloaded. The selected source drives the songs list.
+* **Songs**: every track of the selected source. The status of a song says whether it is queued, being looked up, downloading, merging, done, a duplicate or failed. A bar shows the progress.
+* **Details**: the yt-dlp log of the selected song, or the log of the whole source when you select it.
+* **Keys**: the shortcut of a menu entry chooses it (the Help menu lists them all). Over the songs, `j` and `k` move, `d` accepts the songs that wait, `D` accepts all of them, `x` rejects them, `o` opens the video, Space ticks a song, `f` shows only the failed songs, `t` shows the technical lines and `r` retries.
 
-The screen stays up when everything is finished so the counters and failures remain visible. Every line is also appended to `mvd.log` (see `log_file`).
-
-Terminals narrower than 100 columns show only the lists; press `l` for the output. When stdout is not a terminal, or with `--no-tui` (or `MVD_NO_TUI=1`), the app prints a plain log instead and exits when done.
-
-Emoji in playlist and video titles are not drawn, because terminals disagree on their width and one wrong guess shifts the whole layout. The interface uses Unicode box drawing and status glyphs, so use a terminal with a font that has them (Windows Terminal, iTerm2, GNOME Terminal, kitty, VS Code and most others are fine). A terminal that does not answer colour queries can add a five second pause at start-up; `--no-tui` avoids it.
+The window stays open when everything is finished so the counters and failures remain visible. Every line is also appended to `mvd.log` (see `log_file`). With `--no-tui` (or `MVD_NO_TUI=1`), or when stdout is not a terminal, the app prints a plain log instead and exits when done.
 
 Work goes through four stages, each with its own queue and workers, so a slow one does not hold the others back:
 
@@ -133,21 +109,11 @@ Config and the download list live in your OS preferences folder, created on firs
 
 It holds `config.conf` (settings), `list.txt` (your URLs), `plan.mvd` (the review you were doing, so you can pick it up later), `official-videos.json` (the official videos already found, so a second run asks nobody; delete it to search again) and `cookies.txt` (the exported browser cookies, private — keep it safe). You normally never touch these by hand; edit everything in the app. A legacy `setup.conf`/`downloads.conf` next to the binary is imported once on first run.
 
-### Screens and keys
+### Preferences and keys
 
-<p align="center">
-  <img src="assets/screenshots/preferences.png" alt="The preferences screen" width="360">
-  <img src="assets/screenshots/colours.png" alt="The colours screen" width="360">
-  <img src="assets/screenshots/advanced.png" alt="The advanced screen" width="360">
-</p>
+The preferences open in a window of their own from File > Preferences. They have four tabs: Output, Download, Advanced and Theme. Each change applies at once. The folders and the name pattern of the files wait for the Save button.
 
-- **List** — paste/type URLs, one per line. `Ctrl+S` start · `Ctrl+E` review before downloading (see below) · `Ctrl+P` preferences · `Ctrl+R` reset · `Ctrl+Q`/`Esc` quit. (Ctrl here because Return makes a new line.)
-- **Preferences** — `↑↓` move · `Enter` edit/toggle · `a` advanced · `c` colours · `s` save · `Esc` cancel. Booleans toggle on Enter; quality/merge/cookies open a radio selector; the output and log folders open a folder navigator (`↑↓` move, `→` open, `←` up, `n` new folder, `Enter` choose, `Esc` cancel).
-- **Advanced** — raw extra yt-dlp args, parallel fragments and auto-retry. `s` save · `Esc` back.
-- **Colours** — the eight interface colours, each with a swatch. `Enter` edit (`#rgb` or `#rrggbb`, applied as soon as you accept it) · `d` default · `s` save · `Esc` back. Save on the preferences screen to keep them.
-- **Download** — the live dashboard (see above); `q` returns to the list.
-
-> Keys are bare single letters where you aren't typing; `Ctrl` is used only on the list editor. A terminal can't receive the Cmd key on macOS, so `Ctrl` is used on every platform.
+The list is edited in the main window: Add source (a link or a music search), the Edit menu (undo, redo, cut, paste, delete, move up and down) and File > Open and Save. Run > Load playlists starts the work, and Pause, Stop and Retry failed act on a run that goes on.
 
 ### `config.conf` keys (for reference)
 
@@ -215,48 +181,21 @@ Videos are always downloaded one by one, so `%(playlist_title)s`, `%(playlist_in
 
 The lookup depends on pages and endpoints YouTube can change without notice, so a weekly check watches it (`.github/workflows/youtube-check.yml`, the program is `tools/youtube-check`). It looks up every song of a playlist kept for the purpose (the repository variable `YT_CHECK_PLAYLIST`, 50 songs or more) against the real YouTube, without the cache, and compares the answers with the ones recorded in `tools/youtube-check/baseline.json` (record them with `go run ./tools/youtube-check -playlist <url> -record` and read what it recorded before committing). A few songs answering differently is normal, since videos get removed and blocked; when more than a tenth of them do, it opens or updates an issue labelled `youtube-change` with a table of what differs, and, when the `ANTHROPIC_API_KEY` secret is set, starts Claude Code, which may only investigate, commit under `libs/mvd-core/official` and open a draft pull request; it never merges. Without the playlist variable or the recorded answers the check does nothing.
 
-### Reviewing a playlist before downloading (the playlist editor)
+### Checking what MVD chose before it downloads
 
-When you would rather check what MVD chose than trust it, press **ctrl+e** ("review") on the list instead of ctrl+s. MVD does everything except the download: it lists the playlist, names every song and picks the version it would download, then shows you the result, song by song.
+Run > Load playlists lists the playlists, names every song and picks the version it would download. Each song then waits for you in the songs list. The details say what the playlist has, what MVD proposes and why.
 
-```
- MVD · Review before downloading  ·  49 songs · 12 to download · 30 not reviewed · 7 downloaded
-    Review    Artist              Song                         Video                             Replaced by
- ▸ ✓ official  Armand Van Helden   You Don't Know Me            You Don't Know Me (Radio Edit)
-   · better    Stardust            Music Sounds Better With You Music Sounds Better With You
-   ↻ chosen    Modjo               Lady (Hear Me Tonight)       Modjo - Lady (Hear Me Tonight)    Modjo - Lady (Official Video)
-   ✗ original  Some Artist         Some Song (live)             Some Song (live)
- ──────────────────────────────────────────────────────────────────────────────────────────
- Playlist   90s UK Dance Hits  ·  1 of 49
- In list    You Don't Know Me (Radio Edit)  ·  Armand Van Helden - Topic  https://www.youtube.com/watch?v=rnlp_avexYQ
- Proposed   official  https://www.youtube.com/watch?v=-bsONE-kZwI  ·  official video by "London Records"
- Your pick  confirmed
-```
-
-For each song you see what the playlist has, what MVD proposes and why, with the address of the video (the address is a link where your terminal supports links, and **o** opens it in your browser; **v** opens the upload that is in the playlist). Then you decide:
-
-| Key | Does |
+| Key over the songs | Does |
 |---|---|
-| `c` | confirm what was proposed |
-| `r` | replace it with a video you found: paste its address and MVD takes that one |
-| `u` | take the upload that is in the playlist, as it is |
-| `x` | skip the song |
-| `z` | undo your choice |
-| `a` | confirm every song nobody has decided on |
-| `d` | download |
-| `s` / `l` | save the review to a file / open a saved one (the window of your system opens, as in any other program) |
-| `esc` | back to the list |
+| `d` | accept the ticked songs |
+| `D` | accept all songs that wait (the *Accept all songs* button does the same) |
+| `x` | reject the ticked songs |
+| `o` | open the video of the song in your browser |
+| Space | tick or untick the song |
 
-Every decision (`c`, `r`, `u`, `x`) moves on to the next song, so you can go through the list with one hand; `z` stays on the song it undoes.
+Accepted songs download. Run > Pause downloads holds the work again: the songs on their way finish and nothing else begins. A list is kept in its `.mvd` file as the run goes on, so you can stop and carry on later. Open a saved list with File > Open, or start MVD with `mvd -edit playlist.mvd`.
 
-**Download** takes the songs you confirmed, replaced or took the original of. When some were not looked at, MVD asks once: skip them (`y`), or download them as proposed too (`a`). Songs that were downloaded are marked, and are skipped from then on.
-
-MVD never changes the music. If a replacement video turns out to play on one side only (some uploads are like that), it is removed and the song is searched for again without it; when nothing else is found, the upload of your playlist is kept.
-
-That is what makes it possible to do a long playlist **in small chunks**:
-
-- The review is kept after every change. The next time you review a playlist, MVD asks whether to bring the previous review along; the songs you already decided on and downloaded come back as they were.
-- **Save** writes the review to a `.mvd` file (a compressed text file, one song per line) that you can keep, send or open on another machine. Open it with **l**, or put its path on the list (a line ending in `.mvd`), or start MVD with `mvd -edit playlist.mvd` (`mvd-tui -edit playlist.mvd` in the terminal app).
+MVD never changes the music. If a replacement video turns out to play on one side only (some uploads are like that), it is removed and the song is searched for again without it. When nothing else is found, the upload of your playlist is kept.
 
 ---
 
@@ -282,7 +221,9 @@ The code follows vertical feature slices: `apps/mvd/main.go` only wires things t
 | `libs/mvd-core/engine` | Download every playlist: queue, worker pool, duplicate detection, retries, the `mvd.log` file, and the events every renderer consumes. Playlists of other services come in through the `TrackSource` port. |
 | `libs/mvd-core/runstate` | Mirror engine events into a state renderers can draw, plus human readable sizes and times. |
 | `libs/mvd-core/plain` | Print the run as a plain log (pipes, CI, `--no-tui`). |
-| `libs/mvd-core/tui` | The interactive screens: list, preferences, advanced, colours, folder picker and the download dashboard. |
+| `libs/mvd-core/workspace` | The state of the window: the list, the run, the menus and the questions. It reacts to the intents of the window and the events of the run. |
+| `libs/mvd-core/tui` | The app model: the workspace and the preferences, and what they tell the host. |
+| `libs/mvd-core/program` | The small runtime that runs a model: messages, commands and a headless loop. |
 
 Dependencies point one way: `main` → `engine` → `ytdlp`; `main` → `official`, injected into the engine through a small port interface so the engine never imports it (the same goes for `spotify` and `applemusic`, wired by `runner` into the engine's `TrackSource`); `tui` and `plain` → `runstate` → `engine`. No two slices import each other. Tests sit next to the file they test; the `ytdlp` and `engine` test binaries double as a stub `yt-dlp`, so the suite runs on every platform without shell scripts.
 

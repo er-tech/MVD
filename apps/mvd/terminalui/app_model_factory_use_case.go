@@ -6,8 +6,7 @@ package terminalui
 import (
 	"path/filepath"
 	"strings"
-
-	tea "charm.land/bubbletea/v2"
+	"youtube-downloader/libs/mvd-core/program"
 
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/config"
@@ -49,11 +48,6 @@ type Host struct {
 	SignIn func() (string, error)
 	// SignInState says what the last sign-in came to; see tui.SetupInput.
 	SignInState func() string
-	// Plan and PlanDownload run the playlist editor's plan-only run and the download of
-	// what it chose; Describe names a video the person picked. Each may be nil.
-	Plan         tui.RunStarter
-	PlanDownload tui.PlanDownloadStarter
-	Describe     func(videoID string) (string, error)
 	// PickFile is the operating system's own open-file window, which the editor's open
 	// key shows; nil to ask for the file on the screen's bottom line.
 	PickFile func(start string) (string, bool, error)
@@ -88,15 +82,14 @@ type Host struct {
 // NewModelFactory returns what the server calls when the first window connects
 // (and again after the user quits the app from it). Each start reads the files
 // again, so a change made elsewhere since is the one it shows.
-func NewModelFactory(appDir string, files Files, host Host, logf func(string, ...interface{})) func() tea.Model {
+func NewModelFactory(appDir string, files Files, host Host, logf func(string, ...interface{})) func() program.Model {
 	review := files.Review // only the first window opens on it
-	return func() tea.Model {
+	return func() program.Model {
 		cfg, created, err := config.LoadOrCreate(files.Config, appDir, appdir.DefaultVideosDir())
 		if err != nil {
 			logf("cannot read the settings %s, starting from the defaults: %v", files.Config, err)
 			cfg, created = config.Default(appDir, appdir.DefaultVideosDir()), true
 		}
-		tui.ApplyTheme(cfg.Colors)
 		urls, _ := sourcelist.Load(files.List)
 		list := downloadlist.New(urls)
 		lastList := filepath.Join(appDir, "last-list.txt")
@@ -139,15 +132,8 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 				}
 			},
 			Host: workspace.Host{
-				AutoLoad: true,
-				Start:    host.StartList,
-				Editor: tui.EditorHost{
-					Open:        openurl.Open,
-					Describe:    host.Describe,
-					SessionFile: filepath.Join(appDir, "plan"+playlistfile.Extension),
-					SaveDir:     filepath.Join(appDir, "plans"),
-					DecisionLog: filepath.Join(appDir, "editor-decisions.jsonl"),
-				},
+				AutoLoad:   true,
+				Start:      host.StartList,
 				ListDir:    filepath.Join(appDir, "lists"),
 				PickFile:   host.PickFile,
 				SaveFile:   host.SaveFile,

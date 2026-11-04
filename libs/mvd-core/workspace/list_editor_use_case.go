@@ -1,13 +1,11 @@
 package workspace
 
 import (
-	"youtube-downloader/libs/mvd-core/workspace/listhistory"
 	"strings"
-
-	tea "charm.land/bubbletea/v2"
+	"youtube-downloader/libs/mvd-core/program"
+	"youtube-downloader/libs/mvd-core/workspace/listhistory"
 
 	"youtube-downloader/libs/mvd-core/playlistfile"
-	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
 
 // editable reports whether the list can be changed now: not while a run has its own copy.
@@ -27,7 +25,8 @@ func (m Model) showItems(items []playlistfile.Item, sel int) Model {
 	if err := m.session.Replace(items); err != nil {
 		m.notice = "Cannot save the list: " + err.Error()
 	}
-	m.show(m.view().WithState(m.session.Preview()).SelectPlaylist(sel))
+	m.dl.Show(m.session.Preview())
+	m.dl.SelectPlaylist(sel)
 	return m
 }
 
@@ -37,8 +36,15 @@ func (m Model) selected() (int, bool) {
 	return i, i >= 0 && i < len(m.session.File().Items)
 }
 
-// editList does what the person did to a playlist of the screen.
-func (m Model) editList(msg downloadpage.ListEditMsg) (tea.Model, tea.Cmd) {
+// listEdit is what the person did to a playlist of the window: op is "edit" (change the address of
+// playlist index), "remove" (take it out) or "move" (put it where playlist to is).
+type listEdit struct {
+	op        string
+	index, to int
+}
+
+// editList does what the person did to a playlist of the window.
+func (m Model) editList(msg listEdit) (program.Model, program.Cmd) {
 	m = m.settle()
 	if m.addable() {
 		return m.editRun(msg)
@@ -48,22 +54,22 @@ func (m Model) editList(msg downloadpage.ListEditMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	items := cloneItems(m.session.File().Items)
-	if msg.Index < 0 || msg.Index >= len(items) {
+	if msg.index < 0 || msg.index >= len(items) {
 		return m, nil
 	}
-	switch msg.Op {
+	switch msg.op {
 	case "remove":
-		m = m.setItems(append(items[:msg.Index], items[msg.Index+1:]...), msg.Index)
+		m = m.setItems(append(items[:msg.index], items[msg.index+1:]...), msg.index)
 	case "move":
-		if msg.To < 0 || msg.To >= len(items) || msg.To == msg.Index {
+		if msg.to < 0 || msg.to >= len(items) || msg.to == msg.index {
 			return m, nil
 		}
-		moved := items[msg.Index]
-		rest := append(append([]playlistfile.Item(nil), items[:msg.Index]...), items[msg.Index+1:]...)
-		out := append(append([]playlistfile.Item(nil), rest[:msg.To]...), moved)
-		m = m.setItems(append(out, rest[msg.To:]...), msg.To)
+		moved := items[msg.index]
+		rest := append(append([]playlistfile.Item(nil), items[:msg.index]...), items[msg.index+1:]...)
+		out := append(append([]playlistfile.Item(nil), rest[:msg.to]...), moved)
+		m = m.setItems(append(out, rest[msg.to:]...), msg.to)
 	case "edit":
-		return m.startChange(msg.Index)
+		return m.startChange(msg.index)
 	}
 	return m, nil
 }
@@ -107,7 +113,7 @@ func (m Model) addAddresses(text string) Model {
 }
 
 // editCommand works the commands of the Edit menu on the playlist the cursor is on.
-func (m Model) editCommand(name string) (tea.Model, tea.Cmd) {
+func (m Model) editCommand(name string) (program.Model, program.Cmd) {
 	m = m.settle()
 	if m.addable() {
 		return m.editRunCommand(name)
@@ -134,61 +140,33 @@ func (m Model) editCommand(name string) (tea.Model, tea.Cmd) {
 		return m.showItems(last, i), nil
 	case entryPaste:
 		return m.paste()
-	case entryCopy:
-		return m.copy(false)
-	case entryCut:
-		return m.copy(true)
+	case entryCopy, entryCut:
+		return m, nil // they work on the address being written, which the window's own field handles
 	}
 	if !ok {
 		return m, nil
 	}
 	switch name {
 	case entryDelete:
-		return m.editList(downloadpage.ListEditMsg{Op: "remove", Index: i})
+		return m.editList(listEdit{op: "remove", index: i})
 	case entryMoveUp:
-		return m.editList(downloadpage.ListEditMsg{Op: "move", Index: i, To: i - 1})
+		return m.editList(listEdit{op: "move", index: i, to: i - 1})
 	case entryMoveDown:
-		return m.editList(downloadpage.ListEditMsg{Op: "move", Index: i, To: i + 1})
+		return m.editList(listEdit{op: "move", index: i, to: i + 1})
 	}
 	return m, nil
 }
 
-// copy puts what is selected in the address being written on the clipboard; with cut it is taken
-// out too.
-func (m Model) copy(cut bool) (tea.Model, tea.Cmd) {
-	if !m.inline.on || !m.inline.line.HasSelection() {
-		return m, nil
-	}
-	text := m.inline.line.Selection()
-	if cut {
-		m.inline.line, _ = m.inline.line.Cut()
-	}
-	if m.host.Clipboard != nil {
-		if err := m.host.Clipboard.Write(text); err != nil {
-			m.notice = "Cannot copy: " + err.Error()
-		}
-		return m, nil
-	}
-	return m, tea.SetClipboard(text)
-}
-
-// paste puts the clipboard in the address being written, or adds its links to the list.
-func (m Model) paste() (tea.Model, tea.Cmd) {
+// paste adds the links of the clipboard to the list.
+func (m Model) paste() (program.Model, program.Cmd) {
 	if m.host.Clipboard == nil {
-		return m, tea.ReadClipboard // the terminal answers with a ClipboardMsg
+		m.notice = "Cannot paste: there is no clipboard"
+		return m, nil
 	}
 	text, err := m.host.Clipboard.Read()
 	if err != nil {
 		m.notice = "Cannot paste: " + err.Error()
 		return m, nil
 	}
-	return m.pasted(text), nil
-}
-
-// pasted takes text that came from the clipboard.
-func (m Model) pasted(text string) Model {
-	if m.inline.on {
-		return m.pasteInline(text)
-	}
-	return m.addAddresses(text)
+	return m.addAddresses(text), nil
 }

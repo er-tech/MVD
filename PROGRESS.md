@@ -15,13 +15,14 @@ built an outline after every update, and a lost command at start left the list n
 2. Draw in React the screens only the terminal drew. Only one existed (an address written in its
    row); it is now a question of the window. **Done** (commit "an address being written is a
    question of the window").
-3. Delete the ANSI render code: `dialog`, `cells`, `look`, `keybar`, `lineedit` rendering, `menubar`,
-   `screenview`, `View` functions, `Outline`, the terminal theme colours (`config.Colors`,
-   `ThemeName`, `prefsform` colour fields), `Backdrop`/`Modal`, golden tests. **Started:** the setup
-   screens and setup model (121 files, 8,300 lines) are gone. The rest is open, see "Next steps".
-4. Replace `tea.Msg` and `tea.Cmd` with a small runtime of our own; remove bubbletea, lipgloss and
-   the other terminal libraries from `go.mod`. **Started:** package `program` (Msg, Cmd, Model, Batch,
-   Tick, Quit, a headless runner) exists and is tested, and nothing uses it yet.
+3. Delete the ANSI render code, the key and mouse handling and the terminal widgets. **Done.**
+   `workspace` drives `downloadsession.Session` itself: no `menubar`, no screen model, no text-input
+   widgets. The packages `dialog`, `look`, `cells`, `keybar`, `lineedit`, `menubar`, `screenview`,
+   `pointer`, `outline`, `run/download` (but its run contract), `run/help`, `run/addlinks`,
+   `run/loading`, `editor/*`, `internal/cuppa`, `internal/components` and `testing/{keys,mouse,drawing}`
+   are gone, and so is the renderer-neutral guard (`architecture`), which had nothing left to guard.
+4. Replace `tea.Msg` and `tea.Cmd` with a small runtime of our own (package `program`); remove
+   bubbletea, lipgloss and the other terminal libraries from `go.mod`. **Done.**
 
 ## Decisions
 
@@ -49,19 +50,10 @@ built an outline after every update, and a lost command at start left the list n
 Each launch saves a draft list in `%APPDATA%\mvd\lists` (`Untitled list 12.mvd` to `47`). They are
 not deleted; the person decides.
 
-## Next steps (found while sizing phases 3 and 4)
+## Left to do
 
-- `deadcode` cannot find the render code: a `View()` called through an interface keeps every
-  `View()` alive. Delete by compiling instead: remove a package's `View`/`Render`, then fix the
-  callers.
-- `tea.Cmd` is a defined type and `tea.Msg` is `uv.Event`, so `program.Cmd` cannot replace it while
-  a Bubbles widget (`textinput`, `textarea`) still returns one. Remove the widgets first (the line
-  questions in `workspace`, `lineedit`, `prefspopup`), then swap `tea.Model/Cmd/Msg/Batch/Tick/Quit`
-  for the `program` ones and run `Start` on `program.New`.
-- The window sends intents, not keys or mouse events, so the key and mouse handling in `workspace`,
-  `run/download` and `menubar` is dead. About 200 uses of `tea.KeyPressMsg` and `tea.Mouse*Msg` in
-  tests go with it. Tests that read a behaviour out of the drawn text need a rewrite against
-  `Window()` snapshots, not a deletion.
-- Order: render and widgets in `workspace`; `run/download` screen; `prefspopup`, `menubar`, `dialog`,
-  `look`, `cells`, `keybar`, `lineedit`, `screenview`, `internal/cuppa`; then the runtime swap; then
-  `go mod tidy`.
+- The docs that describe the terminal interface (`NORMAL-README.md`, `nerdy-info.md`,
+  `docs/architecture/views-hold-no-logic.md`, `docs/screenshots/README.md`) need a rewrite.
+- `playlisteditor` and `menumodel` stay: they are pure models the workspace still uses.
+- The keys the window sends are the plain letters only: `j k f t r d D x o` and Space. The other
+  keys of the old download screen (`c`, `F`, `l`, `s`, `a`, `q`) had no use in the window.

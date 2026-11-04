@@ -24,8 +24,7 @@ solarized-dark, solarized-light, light-plus.
 
 ## Making them again
 
-1. `MVD_DOC_FRAMES=<folder>/frames go test ./libs/mvd-core/run/download -run TestDocFrames`
-   writes one `.ansi` frame per theme (`doc_frames_test.go` holds the sample songs).
-2. Serve the repository folder (`python -m http.server`), open
-   `tools/doc-screenshots/frame.html?f=<theme>` with the frames folder next to the page as
-   `frames/`, and take a screenshot of the `#t` element (120 x 30 cells).
+Take the screenshots from the running window. Start the app with a throw-away profile (set
+`APPDATA`, or `HOME` on macOS and Linux, to an empty folder), put the sample links in the list and
+capture the window of each theme. The old generator that drew `.ansi` frames from the terminal
+screen is gone, because the app has no terminal screen any more.

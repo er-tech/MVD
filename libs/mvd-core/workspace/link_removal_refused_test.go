@@ -5,7 +5,6 @@ import (
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/downloadlist"
-	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
 
 // refusingRun is a fake run that will not take a link out.
@@ -19,7 +18,7 @@ func TestALinkThatTheRunWillNotTakeOutSaysSoAndStaysInTheList(t *testing.T) {
 	m := sized(New(autoLoadHost(t, run), config.Config{OutputDir: t.TempDir()}, list))
 	m = m.runStartedFor(t, run)
 
-	next, _ := m.Update(downloadpage.ListEditMsg{Op: "remove", Index: 1})
+	next, _ := m.Update(listEdit{op: "remove", index: 1})
 	m = next.(Model)
 	if m.notice == "" {
 		t.Error("a link the run would not take out was dropped without a word")

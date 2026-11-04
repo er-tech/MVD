@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"youtube-downloader/libs/mvd-core/config"
-	editorpage "youtube-downloader/libs/mvd-core/editor/editor"
 	"youtube-downloader/libs/mvd-core/engine"
 	downloadpage "youtube-downloader/libs/mvd-core/run/download"
 )
@@ -27,8 +26,6 @@ type Host struct {
 	// Start starts a run for the list: sources are the addresses nobody has looked at yet,
 	// plan the songs of the others. With hold, every song waits for review until released.
 	Start func(cfg config.Config, sources []string, plan []engine.PlannedEntry, hold bool) (ListRun, error)
-	// Editor is what the review of a list needs.
-	Editor editorpage.EditorHost
 	// AutoLoad starts loading the songs of the list in the background as soon as it has a link
 	// that has not been loaded, so the person never presses a button for it.
 	AutoLoad bool

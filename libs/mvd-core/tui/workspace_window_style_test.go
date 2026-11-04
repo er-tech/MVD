@@ -3,8 +3,7 @@ package tui
 import (
 	"path/filepath"
 	"testing"
-
-	tea "charm.land/bubbletea/v2"
+	"youtube-downloader/libs/mvd-core/program"
 
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/workspace"
@@ -20,7 +19,7 @@ func styledApp(t *testing.T, style string) (workspaceApp, *[]string, *[]windowsn
 		Style:  func(s, scheme string) { *styles = append(*styles, s+"/"+scheme) },
 		Window: func(s windowsnapshot.Snapshot) { *windows = append(*windows, s) },
 	}).(workspaceApp)
-	next, _ := a.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	next, _ := a.Update(program.WindowSizeMsg{Width: 120, Height: 40})
 
 	return next.(workspaceApp), styles, windows
 }
@@ -36,7 +35,7 @@ func TestAClassicStyleGetsWhatTheWindowShows(t *testing.T) {
 	app := next.(workspaceApp).closePrefs(false)
 	changed := app.cfg
 	changed.WindowStyle = "windows-xp"
-	app.apply(changed, false).Update(tea.KeyPressMsg{})
+	app.apply(changed, false).Update(program.WindowSizeMsg{Width: 120, Height: 40})
 	if (*styles)[len(*styles)-1] != "windows-xp/blue" {
 		t.Errorf("styles %v", *styles)
 	}

@@ -2,10 +2,8 @@ package terminalui
 
 import (
 	"context"
-	"io"
 	"path/filepath"
-
-	tea "charm.land/bubbletea/v2"
+	"youtube-downloader/libs/mvd-core/program"
 )
 
 // headlessWidth and headlessHeight are the size the program is told it has: nothing is drawn for
@@ -23,7 +21,8 @@ func ConfigPath(appDir string) string {
 // Program is the app's model running with no terminal behind it: the window is drawn by the page
 // from what the model reports, and the page sends back what the person does.
 type Program struct {
-	program *tea.Program
+	program *program.Program
+	done    chan struct{}
 }
 
 // Start runs model at once, until ctx ends or the model quits.
@@ -32,22 +31,19 @@ type Program struct {
 // model: the app's model, as NewModelFactory makes it.
 //
 // It returns the way to send messages to the program.
-func Start(ctx context.Context, model tea.Model) *Program {
-	p := tea.NewProgram(model,
-		tea.WithContext(ctx),
-		tea.WithInput(nil),
-		tea.WithOutput(io.Discard),
-		tea.WithoutRenderer(),
-		tea.WithoutSignalHandler(),
-		tea.WithWindowSize(headlessWidth, headlessHeight),
-	)
-	go func() { _, _ = p.Run() }()
-	go p.Send(tea.WindowSizeMsg{Width: headlessWidth, Height: headlessHeight})
+func Start(ctx context.Context, model program.Model) *Program {
+	p := program.New(model)
+	done := make(chan struct{})
+	go func() { defer close(done); _, _ = p.Run(ctx) }()
+	go p.Send(program.WindowSizeMsg{Width: headlessWidth, Height: headlessHeight})
 
-	return &Program{program: p}
+	return &Program{program: p, done: done}
 }
 
 // Send delivers msg to the program.
-func (p *Program) Send(msg tea.Msg) {
+func (p *Program) Send(msg program.Msg) {
 	p.program.Send(msg)
 }
+
+// Wait returns once the program has ended: its context was cancelled or the model quit.
+func (p *Program) Wait() { <-p.done }

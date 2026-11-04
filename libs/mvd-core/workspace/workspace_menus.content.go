@@ -1,6 +1,6 @@
 package workspace
 
-import "youtube-downloader/libs/mvd-core/menubar"
+import "youtube-downloader/libs/mvd-core/menumodel"
 
 // Names of the entries the workspace acts on.
 const (
@@ -26,9 +26,9 @@ const (
 	entryUpdates     = "Check for updates…"
 )
 
-func menus() []menubar.Menu {
-	return []menubar.Menu{
-		{Name: "File", Entries: []menubar.Entry{
+func menus() []menumodel.Menu {
+	return []menumodel.Menu{
+		{Name: "File", Entries: []menumodel.Entry{
 			{Name: entryNew, Shortcut: "Ctrl+N"},
 			{Name: entryOpen, Shortcut: "Ctrl+O"},
 			{Name: entrySave, Shortcut: "Ctrl+S"},
@@ -38,7 +38,7 @@ func menus() []menubar.Menu {
 			{Separator: true},
 			{Name: entryQuit, Shortcut: "Ctrl+Q"},
 		}},
-		{Name: "Edit", Entries: []menubar.Entry{
+		{Name: "Edit", Entries: []menumodel.Entry{
 			{Name: entryUndo, Shortcut: "Ctrl+Z"},
 			{Name: entryRedo, Shortcut: "Ctrl+Y"},
 			{Separator: true},
@@ -50,7 +50,7 @@ func menus() []menubar.Menu {
 			{Name: entryMoveUp, Shortcut: "Shift+Up"},
 			{Name: entryMoveDown, Shortcut: "Shift+Down"},
 		}},
-		{Name: "Run", Entries: []menubar.Entry{
+		{Name: "Run", Entries: []menumodel.Entry{
 			{Name: entryStart, Shortcut: "Ctrl+R"},
 			{Separator: true},
 			{Name: entryPause, Shortcut: "Ctrl+P"},
@@ -63,7 +63,7 @@ func menus() []menubar.Menu {
 			{Separator: true},
 			{Name: entryOpenFolder, Shortcut: "Ctrl+Shift+O"},
 		}},
-		{Name: "Help", Entries: []menubar.Entry{
+		{Name: "Help", Entries: []menumodel.Entry{
 			{Name: entryShortcuts, Shortcut: "F1 / Ctrl+K"},
 			{Name: entryDocs},
 			{Name: entryReport},
