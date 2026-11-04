@@ -61,7 +61,7 @@ func TestTheAppReopensTheListThatWasOpenWhenItQuit(t *testing.T) {
 	if err := kept.Save(path); err != nil {
 		t.Fatal(err)
 	}
-	if err := saveLastList(filepath.Join(dir, "last-list.txt"), path); err != nil {
+	if err := saveKeptPath(filepath.Join(dir, "last-list.txt"), path); err != nil {
 		t.Fatal(err)
 	}
 	windows, _ := started(t, dir, files)

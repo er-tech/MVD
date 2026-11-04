@@ -92,7 +92,9 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 		urls, _ := sourcelist.Load(files.List)
 		list := downloadlist.New(urls)
 		lastList := filepath.Join(appDir, "last-list.txt")
-		if last, known := loadLastList(lastList); known {
+		lastDirFile := filepath.Join(appDir, "last-folder.txt")
+		lastDir, _ := loadKeptPath(lastDirFile)
+		if last, known := loadKeptPath(lastList); known {
 			// The list that was open when the app quit comes back, so a start does not save a new draft.
 			list = downloadlist.New(nil)
 			if last != "" {
@@ -126,14 +128,20 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 			Window:      host.Window,
 			Preferences: host.Preferences,
 			Remember: func(path string) {
-				if err := saveLastList(lastList, path); err != nil {
+				if err := saveKeptPath(lastList, path); err != nil {
 					logf("cannot keep the last list: %v", err)
 				}
 			},
 			Host: workspace.Host{
-				AutoLoad:   true,
-				Start:      host.StartList,
-				ListDir:    filepath.Join(appDir, "lists"),
+				AutoLoad: true,
+				Start:    host.StartList,
+				ListDir:  filepath.Join(appDir, "lists"),
+				LastDir:  lastDir,
+				RememberDir: func(dir string) {
+					if err := saveKeptPath(lastDirFile, dir); err != nil {
+						logf("cannot keep the last folder: %v", err)
+					}
+				},
 				PickFile:   host.PickFile,
 				SaveFile:   host.SaveFile,
 				Open:       openurl.Open,

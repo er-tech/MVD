@@ -105,3 +105,30 @@ func TestClosingAsksOnlyWhileSongsAreDownloading(t *testing.T) {
 		t.Error("the app closed while a song was downloading, with no question")
 	}
 }
+
+func TestTheFileWindowsStartInTheLastFolderUsedAndRememberIt(t *testing.T) {
+	var picked, remembered string
+	host := Host{
+		ListDir: "lists",
+		LastDir: filepath.Join("music", "old"),
+		PickFile: func(start string) (string, bool, error) {
+			picked = start
+			return "", false, nil
+		},
+		RememberDir: func(dir string) { remembered = dir },
+	}
+	m := sized(New(host, config.Config{}, nil))
+	_, cmd := choose(m, entryOpen)
+	cmd()
+	if picked != filepath.Join("music", "old") {
+		t.Errorf("Open started in %q, want the remembered folder", picked)
+	}
+	path := filepath.Join(t.TempDir(), "mine.mvd")
+	if err := downloadlist.New([]string{"https://a"}).Save(path); err != nil {
+		t.Fatal(err)
+	}
+	next, _ := m.answered(askOpen, path)
+	if want := filepath.Dir(path); remembered != want || next.(Model).startDir() != want {
+		t.Errorf("remembered %q, start %q, want %q", remembered, next.(Model).startDir(), want)
+	}
+}

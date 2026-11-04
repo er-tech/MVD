@@ -31,6 +31,10 @@ type Host struct {
 	AutoLoad bool
 	// ListDir is the folder lists are opened from and saved to by default.
 	ListDir string
+	// LastDir is the folder the file windows start in: the one the last list was opened from or saved
+	// to. Empty to start in ListDir. RememberDir, when set, is called with each new one.
+	LastDir     string
+	RememberDir func(dir string)
 	// PickFile shows the operating system's own open-file window, starting in start, and
 	// returns the file chosen; chosen is false when the person cancelled. Without it the
 	// path is asked for on the bottom line.
