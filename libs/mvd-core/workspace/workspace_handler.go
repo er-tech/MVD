@@ -121,6 +121,8 @@ type Model struct {
 	// wasFinished is whether the run had finished when the screen was last drawn.
 	wasFinished   bool
 	width, height int
+	// lastDir is the folder the file windows start in, from the last list opened or saved.
+	lastDir string
 }
 
 // New returns the workspace showing list, which may be nil for a new, empty one.
@@ -128,7 +130,7 @@ func New(host Host, cfg config.Config, list *downloadlist.Session) Model {
 	if list == nil {
 		list = downloadlist.New(nil)
 	}
-	m := Model{host: host, cfg: cfg, session: list, dl: downloadsession.NewHosted()}
+	m := Model{host: host, cfg: cfg, session: list, dl: downloadsession.NewHosted(), lastDir: host.LastDir}
 	m.dl.Show(list.Preview())
 	return m
 }
@@ -349,7 +351,7 @@ func (m Model) choose(name string) (program.Model, program.Cmd) {
 			return m, nil
 		}
 		if m.host.PickFile != nil {
-			pick, dir := m.host.PickFile, m.host.ListDir
+			pick, dir := m.host.PickFile, m.startDir()
 			return m, func() program.Msg {
 				path, chosen, err := pick(dir)
 				return filePickedMsg{askOpen, path, chosen, err}
@@ -397,10 +399,35 @@ func (m Model) askWhereToSave(p purpose) (Model, program.Cmd) {
 	if m.host.SaveFile == nil {
 		return m.ask(p, "Save the list as", m.defaultPath()), nil
 	}
-	save, dir, name := m.host.SaveFile, filepath.Dir(m.defaultPath()), filepath.Base(m.defaultPath())
+	dir := m.startDir()
+	if p := m.session.Path(); p != "" {
+		dir = filepath.Dir(p) // a list that has a file is saved beside it
+	}
+	save, name := m.host.SaveFile, filepath.Base(m.defaultPath())
 	return m, func() program.Msg {
 		path, chosen, err := save(dir, name)
 		return filePickedMsg{p, path, chosen, err}
+	}
+}
+
+// startDir is the folder the file windows start in: the last one used, else the folder of lists.
+func (m Model) startDir() string {
+	if m.lastDir != "" {
+		return m.lastDir
+	}
+
+	return m.host.ListDir
+}
+
+// rememberDir keeps the folder of path as the one the file windows start in next time.
+func (m *Model) rememberDir(path string) {
+	dir := filepath.Dir(path)
+	if path == "" || dir == m.lastDir {
+		return
+	}
+	m.lastDir = dir
+	if m.host.RememberDir != nil {
+		m.host.RememberDir(dir)
 	}
 }
 
@@ -417,6 +444,7 @@ func (m *Model) save(path string) {
 		return
 	}
 	m.done = "Saved " + m.session.Path()
+	m.rememberDir(m.session.Path())
 }
 
 // ask opens the one-line question of the window.
@@ -447,6 +475,7 @@ func (m Model) answered(p purpose, text string) (program.Model, program.Cmd) {
 		m.session = list
 		m.dl.Show(list.Preview())
 		m.done = "Opened " + list.Path()
+		m.rememberDir(list.Path())
 	case askSaveAs:
 		m.save(withExtension(text))
 	case askSaveThenStart, askSaveThenReview:
