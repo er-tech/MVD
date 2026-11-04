@@ -1,4 +1,4 @@
-// Package prefspopup is the preferences as the popup over the workspace shows them: a row
-// of tabs (Output, Download, Advanced, Theme), and under it the page of the tab, whose
-// settings are changed in place with the keyboard or the mouse.
+// Package prefspopup is the preferences over the workspace: a model of the form (package
+// prefsform) that runs what the host does for it (a folder chooser, moving or removing the app)
+// off the model's goroutine. The page draws the window from its Window.
 package prefspopup
