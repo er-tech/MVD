@@ -45,8 +45,8 @@ func started(t *testing.T, dir string, files Files) (<-chan windowsnapshot.Snaps
 		Preferences: func(w *prefsform.Window) { prefs <- w },
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	t.Cleanup(cancel)
-	Start(ctx, NewModelFactory(dir, files, host, t.Logf)())
+	program := Start(ctx, NewModelFactory(dir, files, host, t.Logf)())
+	t.Cleanup(func() { cancel(); program.Wait() })
 
 	return windows, prefs
 }

@@ -3,7 +3,6 @@ package workspace
 import (
 	"youtube-downloader/libs/mvd-core/program"
 
-	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/run/downloadsession"
 )
 
@@ -52,9 +51,6 @@ func (m Model) runEvents(msg evMsg) (program.Model, program.Cmd) {
 	}
 	for _, ev := range append([]interface{}{msg.ev}, msg.more...) {
 		m.dl.Apply(ev)
-		if _, ok := ev.(engine.EvPlaylistAdded); ok {
-			continue // a link that was just added is the one the person looks at
-		}
 	}
 
 	return m, waitEvent(m.events)

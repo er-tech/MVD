@@ -4,9 +4,7 @@ import (
 	"strings"
 	"youtube-downloader/libs/mvd-core/program"
 
-	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/playlistfile"
-	"youtube-downloader/libs/mvd-core/runstate"
 )
 
 // inlineEdit is an address being written: a new one, in the row it will take, or one that is being
@@ -22,41 +20,6 @@ type inlineEdit struct {
 	before int
 	// text is what is written.
 	text string
-}
-
-// startAdd opens a new row after the playlist the cursor is on, to write an address in.
-func (m Model) startAdd() (Model, program.Cmd) {
-	if m.addable() {
-		return m.startAddToRun(), nil
-	}
-	if !m.editable() {
-		return m, nil
-	}
-	m = m.stopInline(false)
-	items := cloneItems(m.session.File().Items)
-	at, before := len(items), len(items)-1
-	if i, ok := m.selected(); ok {
-		at, before = i+1, i
-	}
-	shown := append(append(append([]playlistfile.Item(nil), items[:at]...), playlistfile.Item{}), items[at:]...)
-	m.dl.Show(downloadlist.PreviewOf(playlistfile.File{Items: shown}))
-	m.dl.SelectPlaylist(at)
-	m.inline = inlineEdit{on: true, adding: true, index: at, before: before}
-	return m, nil
-}
-
-// startAddToRun opens a row at the end of the playlists of the run, to write an address in: the
-// same place and the same way as when the list is only being made.
-func (m Model) startAddToRun() Model {
-	m = m.stopInline(false)
-	state := m.dl.State
-	before := m.dl.SelPlaylist
-	state.Playlists = append(state.Playlists, &runstate.Playlist{Index: -1, Listed: true})
-	at := len(state.Playlists) - 1
-	m.dl.SelectPlaylist(at)
-	m.inline = inlineEdit{on: true, adding: true, running: true, index: at, before: before}
-
-	return m
 }
 
 // startChange turns the row of playlist i into a place to write another address.

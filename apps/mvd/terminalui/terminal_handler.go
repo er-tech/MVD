@@ -22,6 +22,7 @@ func ConfigPath(appDir string) string {
 // from what the model reports, and the page sends back what the person does.
 type Program struct {
 	program *program.Program
+	done    chan struct{}
 }
 
 // Start runs model at once, until ctx ends or the model quits.
@@ -32,13 +33,17 @@ type Program struct {
 // It returns the way to send messages to the program.
 func Start(ctx context.Context, model program.Model) *Program {
 	p := program.New(model)
-	go func() { _, _ = p.Run(ctx) }()
+	done := make(chan struct{})
+	go func() { defer close(done); _, _ = p.Run(ctx) }()
 	go p.Send(program.WindowSizeMsg{Width: headlessWidth, Height: headlessHeight})
 
-	return &Program{program: p}
+	return &Program{program: p, done: done}
 }
 
 // Send delivers msg to the program.
 func (p *Program) Send(msg program.Msg) {
 	p.program.Send(msg)
 }
+
+// Wait returns once the program has ended: its context was cancelled or the model quit.
+func (p *Program) Wait() { <-p.done }
