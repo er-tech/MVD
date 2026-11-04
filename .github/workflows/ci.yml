@@ -79,15 +79,15 @@ jobs:
       - name: Setup
         run: smith ci setup
         env:
-          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
+          LOOMAS_TOKEN: ${{ secrets.LOOMAS_TOKEN }}
       - name: Audit
         run: smith ci audit
         env:
-          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
+          LOOMAS_TOKEN: ${{ secrets.LOOMAS_TOKEN }}
       - name: Verify
         run: smith ci verify
         env:
-          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
+          LOOMAS_TOKEN: ${{ secrets.LOOMAS_TOKEN }}
       # smith:slot after-verify
       # smith:slot-end after-verify
       - name: Release preview
@@ -99,7 +99,7 @@ jobs:
         if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_bump != '')) && github.ref_name == 'main'
         run: smith ci pack
         env:
-          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
+          LOOMAS_TOKEN: ${{ secrets.LOOMAS_TOKEN }}
       - name: Keep the packed apps (dist/drop as artifact drop)
         uses: actions/upload-artifact@v7
         if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_bump != '')) && github.ref_name == 'main'
@@ -119,7 +119,7 @@ jobs:
         env:
           RELEASE_BUMP: ${{ inputs.release_bump }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
+          LOOMAS_TOKEN: ${{ secrets.LOOMAS_TOKEN }}
 
   native:
     needs: ci
@@ -149,12 +149,12 @@ jobs:
       - name: Setup
         run: smith ci setup
         env:
-          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
+          LOOMAS_TOKEN: ${{ secrets.LOOMAS_TOKEN }}
       - name: Native
         run: smith ci native
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
+          LOOMAS_TOKEN: ${{ secrets.LOOMAS_TOKEN }}
       - name: Keep the native builds (dist/drop as artifact native-OS)
         uses: actions/upload-artifact@v7
         with:
@@ -199,7 +199,7 @@ jobs:
       - name: Setup
         run: smith ci setup --assets
         env:
-          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
+          LOOMAS_TOKEN: ${{ secrets.LOOMAS_TOKEN }}
       - name: Build and upload the release files
         run: smith ci assets --tag "$ASSETS_TAG" --source "$ASSETS_SOURCE"
         env:
@@ -207,4 +207,4 @@ jobs:
           ASSETS_SOURCE: ${{ inputs.assets_source }}
           SMITH_PLATFORM: ${{ matrix.platform }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          METIL_TOKEN: ${{ secrets.METIL_TOKEN }}
+          LOOMAS_TOKEN: ${{ secrets.LOOMAS_TOKEN }}

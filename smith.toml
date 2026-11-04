@@ -12,7 +12,7 @@ shared_outputs = ["dist/drop"]
 
 [ci]
 providers = ["github"]
-secrets = ["METIL_TOKEN"]
+secrets = ["LOOMAS_TOKEN"]
 native_linux_packages = ["gcc", "pkg-config", "libgtk-3-dev", "libwebkit2gtk-4.1-dev"]
 manual_release = true
 
