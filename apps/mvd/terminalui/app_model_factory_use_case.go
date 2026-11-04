@@ -1,6 +1,5 @@
-// Package terminalui serves mvd's terminal interface (the setup screens and the
-// download screen, the terminal look) to a browser window, through
-// TReactUI.
+// Package terminalui runs mvd's app model with no terminal behind it: the window is drawn by the
+// page from what the model reports, and the page sends back what the person does.
 package terminalui
 
 import (
