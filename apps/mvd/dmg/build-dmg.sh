@@ -1,29 +1,28 @@
 #!/bin/sh
-# Builds dist/drop/mvd_<version>_macos_universal.dmg: a disk image whose window holds MVD.app and a link to
-# /Applications, so installing is a drag. Runs on macOS only (hdiutil, lipo, codesign).
+# Builds the macOS disk images in dist/drop: mvd_<version>_macos_universal.dmg (runs natively on both kinds of Mac),
+# mvd_<version>_macos_arm64.dmg (Apple Silicon only) and mvd_<version>_macos_amd64.dmg (Intel only). The window of
+# each holds MVD.app and a link to /Applications, so installing is a drag. Runs on macOS only (hdiutil, lipo, codesign).
 # The version stamped in the app is $VERSION, or "dev" when it is not set.
 set -eu
 
 if [ "$(uname -s)" != "Darwin" ]; then
-  echo "build-dmg.sh builds the macOS disk image and runs on macOS only." >&2
+  echo "build-dmg.sh builds the macOS disk images and runs on macOS only." >&2
   exit 1
 fi
 
 version="${VERSION:-dev}"
 work="dist/dmg"
 drop="dist/drop"
-# The file name comes from tools/release-assets.cjs, the one place that decides it.
-dmg="$drop/$(VERSION="$version" node tools/release-assets.cjs name mvd darwin universal dmg)"
 rm -rf "$work"
-mkdir -p "$work/staging" "$drop"
+mkdir -p "$work" "$drop"
 
-# One program per architecture, joined into one that runs natively on both. The
-# build flags match the build-native target, apart from -H, which is Windows only.
+# One program per architecture, and one that joins them. The build flags match the
+# build-native target, apart from -H, which is Windows only.
 for arch in arm64 amd64; do
   (cd apps/mvd && GOOS=darwin GOARCH="$arch" CGO_ENABLED=1 \
     go build -trimpath -tags production -ldflags "-s -w -X main.version=$version" -o "../../$work/mvd-$arch" .)
 done
-lipo -create -output "$work/mvd" "$work/mvd-arm64" "$work/mvd-amd64"
+lipo -create -output "$work/mvd-universal" "$work/mvd-arm64" "$work/mvd-amd64"
 
 # The icon is best effort: the logo is an SVG, which only the macOS thumbnailer can
 # draw. Without one the app still works and shows the generic icon.
@@ -40,39 +39,62 @@ make_icon() {
     iconutil -c icns "$work/MVD.iconset" -o "$work/MVD.icns"
 }
 
-set -- -program "$work/mvd" -version "$version" -out "$work/staging/MVD.app"
+icon=""
 if [ -f assets/icons/mvd.icns ]; then
   echo "icon: assets/icons/mvd.icns"
-  set -- "$@" -icon assets/icons/mvd.icns
+  icon="assets/icons/mvd.icns"
 elif make_icon; then
   echo "icon: built from assets/mvd-logo.svg"
-  set -- "$@" -icon "$work/MVD.icns"
+  icon="$work/MVD.icns"
 else
   echo "icon: none, the logo could not be rendered here"
 fi
 
-# The bundle is written by the same code the app uses to install itself.
-go run ./apps/mvd/writebundle "$@"
+# Builds and checks the image of one kind: universal, arm64 or amd64.
+make_dmg() {
+  kind="$1"
+  staging="$work/staging-$kind"
+  mount="$PWD/$work/mount-$kind"
+  # The file name comes from tools/release-assets.cjs, the one place that decides it.
+  dmg="$drop/$(VERSION="$version" node tools/release-assets.cjs name mvd darwin "$kind" dmg)"
+  mkdir -p "$staging"
 
-# An ad-hoc signature, which Apple Silicon requires of anything it runs. It does not
-# make the app notarized: the first launch still needs "Open" from the context menu.
-codesign --force --deep --sign - "$work/staging/MVD.app"
-codesign --verify --deep --strict "$work/staging/MVD.app"
+  # The bundle is written by the same code the app uses to install itself.
+  set -- -program "$work/mvd-$kind" -version "$version" -out "$staging/MVD.app"
+  if [ -n "$icon" ]; then set -- "$@" -icon "$icon"; fi
+  go run ./apps/mvd/writebundle "$@"
 
-ln -s /Applications "$work/staging/Applications"
-rm -f "$dmg"
-hdiutil create -volname MVD -srcfolder "$work/staging" -ov -format UDZO "$dmg"
+  # An ad-hoc signature, which Apple Silicon requires of anything it runs. It does not
+  # make the app notarized: the first launch still needs "Open" from the context menu.
+  codesign --force --deep --sign - "$staging/MVD.app"
+  codesign --verify --deep --strict "$staging/MVD.app"
 
-# Open the image the way a person would and check what they will find.
-mount="$PWD/$work/mount"
-mkdir -p "$mount"
-hdiutil attach -nobrowse -readonly -mountpoint "$mount" "$dmg" >/dev/null
-trap 'hdiutil detach "$mount" -quiet >/dev/null 2>&1 || true' EXIT
+  ln -s /Applications "$staging/Applications"
+  rm -f "$dmg"
+  hdiutil create -volname MVD -srcfolder "$staging" -ov -format UDZO "$dmg"
 
-test -x "$mount/MVD.app/Contents/MacOS/mvd"
-plutil -lint "$mount/MVD.app/Contents/Info.plist"
-test -L "$mount/Applications"
-test "$(readlink "$mount/Applications")" = "/Applications"
-codesign --verify --deep --strict "$mount/MVD.app"
-echo "architectures: $(lipo -archs "$mount/MVD.app/Contents/MacOS/mvd")"
-echo "$dmg verified: MVD.app (signed, ad hoc) and an Applications link"
+  # Open the image the way a person would and check what they will find.
+  mkdir -p "$mount"
+  hdiutil attach -nobrowse -readonly -mountpoint "$mount" "$dmg" >/dev/null
+  test -x "$mount/MVD.app/Contents/MacOS/mvd"
+  plutil -lint "$mount/MVD.app/Contents/Info.plist"
+  test -L "$mount/Applications"
+  test "$(readlink "$mount/Applications")" = "/Applications"
+  codesign --verify --deep --strict "$mount/MVD.app"
+  archs="$(lipo -archs "$mount/MVD.app/Contents/MacOS/mvd")"
+  hdiutil detach "$mount" -quiet >/dev/null
+  # What the program holds must be what the name promises.
+  case "$kind" in
+    universal) want="x86_64 arm64" ;;
+    arm64) want="arm64" ;;
+    amd64) want="x86_64" ;;
+  esac
+  for each in $want; do
+    case " $archs " in *" $each "*) ;; *) echo "$dmg holds [$archs], expected $each" >&2; exit 1 ;; esac
+  done
+  echo "$dmg verified: MVD.app (signed, ad hoc, $archs) and an Applications link"
+}
+
+for kind in universal arm64 amd64; do
+  make_dmg "$kind"
+done

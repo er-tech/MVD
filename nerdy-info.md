@@ -821,7 +821,7 @@ flowchart LR
   CI --> M[merge to main]
   N --> M
   M --> R["nx release<br/>version from conventional commits"]
-  R -->|"feat or fix"| T["tag, build the apps,<br/>zip per OS, universal DMG on macOS"]
+  R -->|"feat or fix"| T["tag, build the apps,<br/>zip on Windows and Linux, three DMGs on macOS"]
   R -->|"chore, docs, ci"| X[no release]
   T --> G[GitHub Release]
 ```
