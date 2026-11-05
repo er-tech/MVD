@@ -11,7 +11,7 @@ const { join } = require('node:path')
 
 const REPO = 'loomas-apps/Loomas'
 // The release the bundle comes from. Loomas's latest release is another product, so it is pinned.
-const TAG = process.env.MUSIC_FIXER_TAG || 'music-fixer-v0.3.0'
+const TAG = process.env.MUSIC_FIXER_TAG || 'music-fixer-v0.5.0'
 const goenv = k => spawnSync('go', ['env', k], { encoding: 'utf8' }).stdout.trim()
 // Loomas names its files by system and processor, not by Go's GOOS and GOARCH.
 const OS = new Map([['windows', 'windows'], ['darwin', 'macos'], ['linux', 'linux']])
