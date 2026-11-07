@@ -96,15 +96,18 @@ export interface SourcesSnapshot {
 /** Progress from 0 to 1, 'unknown' while it cannot be measured, or null when there is none. */
 export type Progress = number | 'unknown' | null
 
-/** One row of the list of songs: the song, its progress and its status. */
+/** One row of the list of songs: the song, its progress, where it is in the work and which video it has. */
 export interface SongRow {
-  id:       string
-  ticked:   boolean
-  artist:   string
-  title:    string
-  progress: Progress
-  status:   string
-  tone:     Tone
+  id:          string
+  ticked:      boolean
+  artist:      string
+  title:       string
+  progress:    Progress
+  status:      string
+  tone:        Tone
+  /** Which video the song has: official, better, original; empty until it is known. */
+  version:     string
+  versionTone: Tone
 }
 
 /** The list of songs: its heading, its rows and the selected row. */

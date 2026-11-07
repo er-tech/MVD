@@ -75,3 +75,25 @@ func TestTheStatusWordCarriesATone(t *testing.T) {
 		t.Errorf("a song with no size yet says %q", word)
 	}
 }
+
+func TestTheStateAndTheVersionOfASongAreTwoWords(t *testing.T) {
+	saved := &runstate.Entry{State: engine.StateDone, Official: true}
+	if state, _ := StateWord(saved); state != "saved" {
+		t.Errorf("the state of a saved official song is %q", state)
+	}
+	if version, _ := VersionWord(saved); version != "official" {
+		t.Errorf("the version of a saved official song is %q", version)
+	}
+	if state, _ := StateWord(&runstate.Entry{State: engine.StatePlanned, Official: true}); state != "to review" {
+		t.Errorf("the state of a song that waits for the person is %q", state)
+	}
+	if version, _ := VersionWord(&runstate.Entry{State: engine.StateQueued}); version != "" {
+		t.Errorf("a song nobody looked at has the version %q", version)
+	}
+	if version, _ := VersionWord(&runstate.Entry{State: engine.StateDone}); version != "original" {
+		t.Errorf("a saved song with no official video has the version %q", version)
+	}
+	if version, _ := VersionWord(&runstate.Entry{State: engine.StateNotFound}); version != "none" {
+		t.Errorf("a song with no official video found has the version %q", version)
+	}
+}
