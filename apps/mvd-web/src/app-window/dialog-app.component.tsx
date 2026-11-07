@@ -12,6 +12,9 @@ const dialogCloseEvent = 'mvd:dialog-close'
 /** The width of the dialog's window, in screen points; its height is the dialog's own. */
 const dialogWidth = 520
 
+/** What the window leaves free of the screen's height, for the system's own bars. */
+const dialogMargin = 80
+
 type DialogLookProps = Pick<WorkspaceSnapshot, 'adding' | 'question'> & {
   style:    string
   scheme?:  string
@@ -94,8 +97,9 @@ export function DialogApp () {
     const element = frameRef.current
     if (!element) return
     const observer = new ResizeObserver(() => {
-      const box = element.firstElementChild?.getBoundingClientRect()
-      if (box && box.height > 0) resizeWindow(dialogWidth, box.height)
+      const { height } = element.getBoundingClientRect()
+      // A dialog taller than the screen leaves the window as tall as the screen, and the page scrolls.
+      if (height > 0) resizeWindow(dialogWidth, Math.min(height, screen.availHeight - dialogMargin))
     })
     observer.observe(element)
 
