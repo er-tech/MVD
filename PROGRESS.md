@@ -1,3 +1,24 @@
+# Progress: rewrite the window on Wails 2
+
+Epic: #480 (supersedes #479). Design: `docs/architecture/rewrite-wails2.md`.
+
+Released before the rewrite: 0.20.1 (update pace, #474), 0.20.2 (planned songs, #474), 0.21.0 (Add source,
+About and every question in a window of their own, #467). #471 was closed: not reproducible.
+
+## Phases
+
+0. Prototype: 5,000 live rows, a download, a clean close. **Next.**
+1. Store, bound methods and events. 2. Page shell and virtual table. 3. Details panel.
+4. Start and downloads. 5. Modals, Preferences, menus. 6. Packaging and updater. 7. Cutover.
+
+## Decisions
+
+- Wails 2 (stable, native menus, one window): modals replace the separate windows.
+- Go owns the state; the page gets bound methods and small events that carry a revision.
+- The old app keeps releasing until parity. No old UI code is reused.
+
+---
+
 # Progress: remove the terminal (TUI) interface
 
 Epic: #448. Performance fixes that came first: #447.
