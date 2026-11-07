@@ -8,11 +8,13 @@ import { useKeyboardIntents } from './keyboard-intents.hook'
 import { QuestionWindow } from './question-window.component'
 
 interface ClassicAppProps {
-  theme:    ClassicTheme
+  theme:         ClassicTheme
   /** The theme's colour scheme; none for its first, the system's own. */
-  scheme?:  string
-  snapshot: WorkspaceSnapshot
-  onIntent: (intent: WorkspaceIntent) => void
+  scheme?:       string
+  snapshot:      WorkspaceSnapshot
+  onIntent:      (intent: WorkspaceIntent) => void
+  /** True when the dialogs have windows of their own, so this window does not draw them. */
+  dialogsApart?: boolean
 }
 
 /** The Edit menu's entries that act on the source chosen, by their label, as its own menu calls them. */
@@ -33,7 +35,7 @@ function sourceActions (menus: MenuSnapshot[]): SourceAction[] {
  * screen the themes do not draw yet. It draws what the snapshot says and sends back what the
  * person does; MVD decides the rest.
  */
-export function ClassicApp ({ theme, scheme, snapshot, onIntent }: ClassicAppProps) {
+export function ClassicApp ({ theme, scheme, snapshot, onIntent, dialogsApart = false }: ClassicAppProps) {
   const { adding, question } = snapshot
   useKeyboardIntents(snapshot.menus, onIntent, !adding && !question)
   // The panes redraw only when what they are given changes, so what is given must stay the same between snapshots.
@@ -56,26 +58,28 @@ export function ClassicApp ({ theme, scheme, snapshot, onIntent }: ClassicAppPro
         scheme={scheme}
         snapshot={snapshot}
         onIntent={onIntent}
-        overlay={(container, layout): ReactNode => question
-          ? (
-              <QuestionWindow
-                question={question}
-                layout={layout}
-                container={container}
-                onButton={id => onIntent({ kind: 'question-button', id })}
-                onText={text => onIntent({ kind: 'question-text', text })}
-              />
-            )
-          : adding && (
-            <AddMusicWindow
-              adding={adding}
-              layout={layout}
-              container={container}
-              onMode={mode => onIntent({ kind: 'adding-mode', mode })}
-              onText={(field, text) => onIntent({ kind: 'adding-text', field, text })}
-              onButton={id => onIntent({ kind: 'adding-button', id })}
-            />
-          )}
+        overlay={(container, layout): ReactNode => dialogsApart
+          ? null
+          : (question
+              ? (
+                  <QuestionWindow
+                    question={question}
+                    layout={layout}
+                    container={container}
+                    onButton={id => onIntent({ kind: 'question-button', id })}
+                    onText={text => onIntent({ kind: 'question-text', text })}
+                  />
+                )
+              : adding && (
+                <AddMusicWindow
+                  adding={adding}
+                  layout={layout}
+                  container={container}
+                  onMode={mode => onIntent({ kind: 'adding-mode', mode })}
+                  onText={(field, text) => onIntent({ kind: 'adding-text', field, text })}
+                  onButton={id => onIntent({ kind: 'adding-button', id })}
+                />
+              ))}
       >
         <SourcesPane
           sources={snapshot.sources}

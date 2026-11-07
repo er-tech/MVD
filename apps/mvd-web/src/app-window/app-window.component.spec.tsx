@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { sampleWorkspace } from '../theme-preview'
 import { AppWindow } from './app-window.component'
+import { DialogApp } from './dialog-app.component'
 import { PreferencesApp } from './preferences-app.component'
 
 /** The program, as the page sees it: events it sends, and the ones the page sent it. */
@@ -33,6 +34,18 @@ const preferences = {
   tab:     0,
   fields:  [],
   colours: { background: '', accent: '#ff2a6d', focus: '', highlight: '', success: '', error: '', dim: '', text: '', selected: '' },
+}
+
+/** The intents the page sent to the program. */
+const intentsOf = (program: ReturnType<typeof fakeProgram>) =>
+  program.sent.filter(([name]) => name === 'mvd:intent').map(([, data]) => JSON.parse(String(data[0])) as unknown)
+
+const quitQuestion = {
+  id:      'quit',
+  title:   'Quit MVD?',
+  tone:    'caution',
+  lines:   ['59 songs are still downloading.', 'Quit and stop them?'],
+  buttons: [{ id: 'quit', label: 'Quit', role: 'other', enabled: true }, { id: 'keep', label: 'Keep downloading', role: 'default', enabled: true }],
 }
 
 describe('AppWindow', () => {
@@ -102,27 +115,14 @@ describe('AppWindow', () => {
     expect(document.querySelector('.app-window')?.hasAttribute('inert')).toBe(false)
   })
 
-  it('asks the quit question as an alert of the theme, with Keep downloading the safe answer', async () => {
+  it('leaves a question to the window of its own: it draws none and cannot be used while one is open', () => {
     const program = fakeProgram()
     render(<AppWindow />)
     program.send('mvd:style', JSON.stringify({ style: 'mac-os-9', scheme: 'default' }))
-    program.send('mvd:snapshot', JSON.stringify({
-      ...sampleWorkspace,
-      question: {
-        id:      'quit',
-        title:   'Quit MVD?',
-        tone:    'caution',
-        lines:   ['59 songs are still downloading.', 'Quit and stop them?'],
-        buttons: [{ id: 'quit', label: 'Quit', role: 'other', enabled: true }, { id: 'keep', label: 'Keep downloading', role: 'default', enabled: true }],
-      },
-    }))
+    program.send('mvd:snapshot', JSON.stringify({ ...sampleWorkspace, question: quitQuestion }))
 
-    const alert = await screen.findByRole('alertdialog', { name: 'Quit MVD?' }, { timeout: 5000 })
-    // A Mac puts the default button last.
-    expect(within(alert).getAllByRole('button').map(button => button.textContent)).toEqual(['Quit', 'Keep downloading'])
-    fireEvent.click(within(alert).getByRole('button', { name: 'Quit' }))
-    const intents = program.sent.filter(([name]) => name === 'mvd:intent').map(([, data]) => JSON.parse(String(data[0])) as unknown)
-    expect(intents).toContainEqual({ kind: 'question-button', id: 'quit' })
+    expect(document.querySelector('.app-window')?.hasAttribute('inert')).toBe(true)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 })
 
@@ -155,6 +155,53 @@ describe('PreferencesApp', () => {
     const program = fakeProgram()
     const { container } = render(<PreferencesApp />)
     program.send('mvd:style', 'windows-95')
+
+    expect(container.children).toHaveLength(0)
+  })
+})
+
+describe('DialogApp', () => {
+  beforeAll(async () => {
+    await Promise.all([import('../add-music-window'), import('../classic-app'), import('../classic-themes'), import('../classic-window')])
+  })
+
+  beforeEach(() => {
+    if (!('CSS' in globalThis)) Reflect.set(globalThis, 'CSS', { escape: (text: string) => text, supports: () => false })
+    if (!('ResizeObserver' in globalThis)) Reflect.set(globalThis, 'ResizeObserver', class { observe (): void {} disconnect (): void {} })
+  })
+
+  afterEach(() => Reflect.deleteProperty(globalThis, 'runtime'))
+
+  it('asks the quit question as an alert of the theme, in its own window, with Keep downloading the safe answer', async () => {
+    const program = fakeProgram()
+    render(<DialogApp />)
+    program.send('mvd:style', JSON.stringify({ style: 'mac-os-9', scheme: 'default' }))
+    program.send('mvd:snapshot', JSON.stringify({ ...sampleWorkspace, question: quitQuestion }))
+
+    const alert = await screen.findByRole('alertdialog', { name: 'Quit MVD?' }, { timeout: 5000 })
+    expect(document.querySelector('.classic-own-window')).not.toBeNull()
+    // Its own window has its title bar, whatever the style, and the buttons go where the system puts them.
+    expect(within(alert).getAllByRole('button').map(button => button.textContent)).toContain('Keep downloading')
+    fireEvent.click(within(alert).getByRole('button', { name: 'Quit' }))
+    expect(intentsOf(program)).toContainEqual({ kind: 'question-button', id: 'quit' })
+  })
+
+  it('closes with the safe answer when the system closes the window', async () => {
+    const program = fakeProgram()
+    render(<DialogApp />)
+    program.send('mvd:style', JSON.stringify({ style: 'windows-95', scheme: '' }))
+    program.send('mvd:snapshot', JSON.stringify({ ...sampleWorkspace, question: quitQuestion }))
+    await screen.findByRole('alertdialog', { name: 'Quit MVD?' }, { timeout: 5000 })
+
+    program.send('mvd:dialog-close', '')
+    expect(intentsOf(program)).toContainEqual({ kind: 'question-button', id: 'keep' })
+  })
+
+  it('shows nothing while the snapshot has no dialog', () => {
+    const program = fakeProgram()
+    const { container } = render(<DialogApp />)
+    program.send('mvd:style', 'windows-95')
+    program.send('mvd:snapshot', JSON.stringify(sampleWorkspace))
 
     expect(container.children).toHaveLength(0)
   })

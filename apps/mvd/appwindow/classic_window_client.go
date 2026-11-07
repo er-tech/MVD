@@ -21,6 +21,7 @@ const (
 	intentEvent       = "mvd:intent"
 	prefsEvent        = "mvd:prefs"
 	prefsIntentEvent  = "mvd:prefs-intent"
+	dialogCloseEvent  = "mvd:dialog-close"
 )
 
 // ClassicWindow carries the windows the page draws between the program and the page: the window
@@ -42,14 +43,17 @@ type ClassicWindow struct {
 	// pacer holds the snapshots back to the pace the page can draw them at.
 	pacer *snapshotPacer
 	// window is the window of the preferences, once there is one to open.
-	window *preferencesWindow
+	window *childWindow
+	// dialog is the window of a dialog (adding music, a question or a note), once there is one to open.
+	dialog *childWindow
 }
 
 // attach starts listening to the page, and returns how to stop.
-func (w *ClassicWindow) attach(app *application.App, window *preferencesWindow) func() {
+func (w *ClassicWindow) attach(app *application.App, window, dialog *childWindow) func() {
 	w.mu.Lock()
 	w.app = app
 	w.window = window
+	w.dialog = dialog
 	w.mu.Unlock()
 	stopIntents := app.Event.On(intentEvent, func(event *application.CustomEvent) {
 		text, ok := event.Data.(string)
@@ -94,7 +98,8 @@ func (w *ClassicWindow) SetStyle(style, scheme string) {
 const snapshotInterval = 200 * time.Millisecond
 
 // Show says what the window shows; the page is told only when it changed, and at most a few times
-// a second, with the newest state each time.
+// a second, with the newest state each time. A dialog (the window for adding music, a question or
+// a note) is not drawn in this window: the window of its own opens with it and closes when it goes.
 func (w *ClassicWindow) Show(snap windowsnapshot.Snapshot) {
 	data, err := json.Marshal(snap)
 	if err != nil {
@@ -105,9 +110,12 @@ func (w *ClassicWindow) Show(snap windowsnapshot.Snapshot) {
 	if w.pacer == nil {
 		w.pacer = &snapshotPacer{every: snapshotInterval, send: w.emitSnapshot}
 	}
-	pacer := w.pacer
+	pacer, dialog := w.pacer, w.dialog
 	w.mu.Unlock()
 	pacer.offer(string(data))
+	if dialog != nil {
+		dialog.set(snap.Adding != nil || snap.Question != nil)
+	}
 }
 
 // emitSnapshot tells the page a snapshot, once there is a page to tell.
