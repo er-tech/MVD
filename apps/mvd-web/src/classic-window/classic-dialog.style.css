@@ -117,3 +117,14 @@
     animation: none;
   }
 }
+
+/* A dialog in a window of its own: the window is the frame, so the dialog fills its width and is as tall as its contents. */
+.classic-dialog.classic-own-window {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 520px;
+  max-height: none;
+  overflow: visible;
+  box-shadow: none;
+}

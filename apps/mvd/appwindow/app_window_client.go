@@ -82,12 +82,13 @@ func Run(ctx context.Context, opts Options) error {
 		}
 	})
 	var stopClassic func()
-	preferences := &preferencesWindow{app: app}
+	preferences := &childWindow{spec: preferencesSpec, app: app}
+	dialog := &childWindow{spec: dialogSpec, app: app}
 	if opts.Backdrop != nil {
 		opts.Backdrop.attach(app)
 	}
 	if opts.Classic != nil {
-		stopClassic = opts.Classic.attach(app, preferences)
+		stopClassic = opts.Classic.attach(app, preferences, dialog)
 		// Closing the preferences window by the system's means asks the program to close them, as the
 		// close button of the page does.
 		preferences.onClose = func() {
@@ -95,6 +96,8 @@ func Run(ctx context.Context, opts Options) error {
 				opts.Classic.OnPrefsIntent(prefsform.WindowIntent{Kind: prefsform.IntentClose})
 			}
 		}
+		// The same for a dialog, which the page answers with its safe button, as its close box does.
+		dialog.onClose = func() { app.Event.Emit(dialogCloseEvent, "") }
 	}
 	if opts.OnFileOpen != nil {
 		app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
@@ -123,8 +126,11 @@ func Run(ctx context.Context, opts Options) error {
 		opts.OnCloseRequest()
 	})
 
-	preferences.main = window
-	window.RegisterHook(events.Common.WindowFocus, func(*application.WindowEvent) { preferences.focus() })
+	preferences.main, dialog.main = window, window
+	window.RegisterHook(events.Common.WindowFocus, func(*application.WindowEvent) {
+		preferences.focus()
+		dialog.focus()
+	})
 
 	go func() {
 		<-ctx.Done()

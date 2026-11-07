@@ -21,7 +21,7 @@ const ClassicLook = lazy(async () => {
 
 /**
  * MVD's window, in the style the preferences say: a classic system's window drawn from what the
- * program sends. The preferences are a window of their own (see PreferencesApp); while it is open this one cannot be used.
+ * program sends. The preferences, the window for adding music and each question are windows of their own (see PreferencesApp, DialogApp); while one is open this one cannot be used.
  */
 export function AppWindow () {
   const chosen = useWindowStyle()
@@ -40,11 +40,11 @@ export function AppWindow () {
   }, [send])
 
   return (
-    <div className='app-window' inert={prefs !== null}>
+    <div className='app-window' inert={prefs !== null || Boolean(snapshot?.question ?? snapshot?.adding)}>
       {style !== null && snapshot !== null && (
         <div className='app-window-classic'>
           <Suspense>
-            <ClassicLook style={style} scheme={scheme} snapshot={snapshot} onIntent={onIntent} />
+            <ClassicLook style={style} scheme={scheme} snapshot={snapshot} onIntent={onIntent} dialogsApart />
           </Suspense>
         </div>
       )}
