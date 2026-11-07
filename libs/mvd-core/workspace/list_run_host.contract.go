@@ -29,8 +29,12 @@ type Host struct {
 	// AutoLoad starts loading the songs of the list in the background as soon as it has a link
 	// that has not been loaded, so the person never presses a button for it.
 	AutoLoad bool
-	// ListDir is the app's own folder of lists: where a list that has no file of its own is kept.
+	// ListDir is the folder the file windows start in when nothing else is known.
 	ListDir string
+	// RecoveryFile is where a list that has no file of the person's own is kept while it runs, so
+	// it comes back if the app stops. It is one file, in the app's folder and without the extension
+	// of a list, and it is deleted when the person saves the list. Empty to keep none.
+	RecoveryFile string
 	// DocumentsDir is where the file windows start when no folder was kept yet. Empty to start in ListDir.
 	DocumentsDir string
 	// LastDir is the folder the file windows start in: the one the last list was opened from or saved

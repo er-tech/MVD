@@ -42,7 +42,7 @@ func (m Model) Window() windowsnapshot.Snapshot {
 // windowTitle is the name of the window: the app and the list that is open.
 func (m Model) windowTitle() string {
 	name := "New list"
-	if path := m.session.Path(); path != "" {
+	if path := m.session.Path(); path != "" && !m.isRecovery(path) {
 		name = filepath.Base(path)
 	}
 

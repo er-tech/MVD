@@ -95,7 +95,7 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 		lastDirFile := filepath.Join(appDir, "last-folder.txt")
 		lastDir, _ := loadKeptPath(lastDirFile)
 		if last, known := loadKeptPath(lastList); known {
-			// The list that was open when the app quit comes back, so a start does not save a new draft.
+			// The list that was open when the app quit comes back, so a start does not make a new list.
 			list = downloadlist.New(nil)
 			if last != "" {
 				if opened, err := downloadlist.Open(last); err == nil {
@@ -135,7 +135,8 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 			Host: workspace.Host{
 				AutoLoad:     true,
 				Start:        host.StartList,
-				ListDir:      filepath.Join(appDir, "lists"),
+				ListDir:      appDir,
+				RecoveryFile: filepath.Join(appDir, "unsaved-list.tmp"),
 				DocumentsDir: appdir.DefaultDocumentsDir(),
 				LastDir:      lastDir,
 				RememberDir: func(dir string) {

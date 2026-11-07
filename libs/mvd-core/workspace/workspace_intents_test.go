@@ -150,19 +150,19 @@ func TestTheFileWindowsStartInDocumentsUntilAFolderIsKept(t *testing.T) {
 	}
 }
 
-func TestSavingAsADraftStartsInTheLastFolderAndKeepsNoDraftFolder(t *testing.T) {
-	lists, kept := t.TempDir(), t.TempDir()
-	draft := filepath.Join(lists, "Untitled list.mvd")
-	if err := downloadlist.New([]string{"https://a"}).Save(draft); err != nil {
+func TestSavingAsAListInTheRecoveryFileStartsInTheLastFolderAndKeepsNoRecoveryFolder(t *testing.T) {
+	kept := t.TempDir()
+	recovery := filepath.Join(t.TempDir(), "unsaved-list.tmp")
+	if err := downloadlist.New([]string{"https://a"}).Save(recovery); err != nil {
 		t.Fatal(err)
 	}
-	list, err := downloadlist.Open(draft)
+	list, err := downloadlist.Open(recovery)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var offered, remembered string
 	host := Host{
-		ListDir:      lists,
+		RecoveryFile: recovery,
 		DocumentsDir: "documents",
 		LastDir:      kept,
 		SaveFile: func(dir, name string) (string, bool, error) {
@@ -175,10 +175,10 @@ func TestSavingAsADraftStartsInTheLastFolderAndKeepsNoDraftFolder(t *testing.T) 
 	_, cmd := choose(m, entrySaveAs)
 	cmd()
 	if offered != kept {
-		t.Errorf("Save as of a draft started in %q, want the last folder %q", offered, kept)
+		t.Errorf("Save as of the recovery list started in %q, want the last folder %q", offered, kept)
 	}
 	m.save("")
 	if remembered != "" {
-		t.Errorf("saving the draft kept its folder %q as the last one", remembered)
+		t.Errorf("the recovery file kept its folder %q as the last one", remembered)
 	}
 }

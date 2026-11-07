@@ -19,8 +19,8 @@ func TestTheSizeMessageThatBeginsLoadingTheListKeepsItsCommand(t *testing.T) {
 		Setup: SetupInput{Cfg: config.Config{OutputDir: t.TempDir()}, CfgPath: filepath.Join(t.TempDir(), "config.conf")},
 		List:  downloadlist.New([]string{"https://www.youtube.com/playlist?list=a"}),
 		Host: workspace.Host{
-			AutoLoad: true,
-			ListDir:  filepath.Join(t.TempDir(), "lists"),
+			AutoLoad:     true,
+			RecoveryFile: filepath.Join(t.TempDir(), "unsaved-list.tmp"),
 			Start: func(config.Config, []string, []engine.PlannedEntry, bool) (workspace.ListRun, error) {
 				started <- struct{}{}
 
