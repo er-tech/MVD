@@ -133,10 +133,11 @@ func NewModelFactory(appDir string, files Files, host Host, logf func(string, ..
 				}
 			},
 			Host: workspace.Host{
-				AutoLoad: true,
-				Start:    host.StartList,
-				ListDir:  filepath.Join(appDir, "lists"),
-				LastDir:  lastDir,
+				AutoLoad:     true,
+				Start:        host.StartList,
+				ListDir:      filepath.Join(appDir, "lists"),
+				DocumentsDir: appdir.DefaultDocumentsDir(),
+				LastDir:      lastDir,
 				RememberDir: func(dir string) {
 					if err := saveKeptPath(lastDirFile, dir); err != nil {
 						logf("cannot keep the last folder: %v", err)
