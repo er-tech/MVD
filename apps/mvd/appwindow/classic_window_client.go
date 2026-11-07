@@ -3,6 +3,7 @@ package appwindow
 import (
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -38,6 +39,8 @@ type ClassicWindow struct {
 	style    string // the style and its scheme, as the JSON the page reads
 	snapshot string
 	prefs    string
+	// pacer holds the snapshots back to the pace the page can draw them at.
+	pacer *snapshotPacer
 	// window is the window of the preferences, once there is one to open.
 	window *preferencesWindow
 }
@@ -86,19 +89,34 @@ func (w *ClassicWindow) SetStyle(style, scheme string) {
 	}
 }
 
-// Show says what the window shows; the page is told only when it changed.
+// snapshotInterval is the least time between two snapshots sent to the page: the page draws each
+// one whole, so a long list that changes at every event would keep it busy for good.
+const snapshotInterval = 200 * time.Millisecond
+
+// Show says what the window shows; the page is told only when it changed, and at most a few times
+// a second, with the newest state each time.
 func (w *ClassicWindow) Show(snap windowsnapshot.Snapshot) {
 	data, err := json.Marshal(snap)
 	if err != nil {
 		return
 	}
 	w.mu.Lock()
-	changed := string(data) != w.snapshot
 	w.snapshot = string(data)
+	if w.pacer == nil {
+		w.pacer = &snapshotPacer{every: snapshotInterval, send: w.emitSnapshot}
+	}
+	pacer := w.pacer
+	w.mu.Unlock()
+	pacer.offer(string(data))
+}
+
+// emitSnapshot tells the page a snapshot, once there is a page to tell.
+func (w *ClassicWindow) emitSnapshot(snapshot string) {
+	w.mu.Lock()
 	app := w.app
 	w.mu.Unlock()
-	if changed && app != nil {
-		app.Event.Emit(snapshotEvent, string(data))
+	if app != nil {
+		app.Event.Emit(snapshotEvent, snapshot)
 	}
 }
 
@@ -125,13 +143,16 @@ func (w *ClassicWindow) ShowPreferences(prefs *prefsform.Window) {
 // resend tells the page the style and the last snapshot again, for a page that has just started.
 func (w *ClassicWindow) resend() {
 	w.mu.Lock()
-	app, style, snapshot, prefs := w.app, w.style, w.snapshot, w.prefs
+	app, style, snapshot, prefs, pacer := w.app, w.style, w.snapshot, w.prefs, w.pacer
 	w.mu.Unlock()
 	if app == nil || style == "" {
 		return
 	}
 	app.Event.Emit(styleEvent, style)
 	if snapshot != "" {
+		if pacer != nil {
+			pacer.resent(snapshot)
+		}
 		app.Event.Emit(snapshotEvent, snapshot)
 	}
 	if prefs != "" {
