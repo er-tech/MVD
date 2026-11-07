@@ -22,13 +22,15 @@ function AddMusicTextField ({ field: { field, label, mnemonic, text }, onText }:
 }
 
 interface AddMusicWindowProps {
-  adding:    AddMusicSnapshot
-  layout:    ChromeLayout
+  adding:     AddMusicSnapshot
+  layout:     ChromeLayout
   /** The element inside the classic window the dialog is drawn in, so a sheet hangs from its title bar. */
-  container: Element
-  onMode:    (mode: AddMusicMode) => void
-  onText:    (field: AddMusicField, text: string) => void
-  onButton:  (id: string) => void
+  container:  Element
+  onMode:     (mode: AddMusicMode) => void
+  onText:     (field: AddMusicField, text: string) => void
+  onButton:   (id: string) => void
+  /** True when the dialog has a window of its own, which it fills with a title bar of its own: no overlay, no sheet. */
+  ownWindow?: boolean
 }
 
 /**
@@ -36,9 +38,9 @@ interface AddMusicWindowProps {
  * Windows it is a dialog with its own title bar; on a classic Mac a plain framed box with its
  * heading inside; on Mac OS X a sheet under the title bar.
  */
-export function AddMusicWindow ({ adding, layout, container, onMode, onText, onButton }: AddMusicWindowProps) {
-  const sheet = layout.dialogStyle === 'sheet'
-  const titled = layout.dialogStyle === 'window'
+export function AddMusicWindow ({ adding, layout, container, onMode, onText, onButton, ownWindow = false }: AddMusicWindowProps) {
+  const sheet = !ownWindow && layout.dialogStyle === 'sheet'
+  const titled = ownWindow || layout.dialogStyle === 'window'
   const cancel = adding.buttons.find(button => button.role === 'cancel')
   const primary = adding.buttons.find(button => button.role === 'default')
 
@@ -71,6 +73,80 @@ export function AddMusicWindow ({ adding, layout, container, onMode, onText, onB
     return () => document.removeEventListener('keydown', onKeyDown)
   })
 
+  const dialog = (
+    <Dialog className='classic-dialog-content' aria-label={titled ? undefined : adding.heading}>
+      {titled && (
+        <TitleBar
+          title={<Heading slot='title' className='classic-title'>{adding.heading}</Heading>}
+          layout={layout}
+          controls={cancel ? ['close'] : []}
+          onWindow={action => { if (action === 'close' && cancel) onButton(cancel.id) }}
+        />
+      )}
+      <form
+        ref={formRef}
+        className='classic-dialog-body'
+        onSubmit={event => {
+          event.preventDefault()
+          if (primary?.enabled) onButton(primary.id)
+        }}
+      >
+        {!titled && <Heading slot='title' className='classic-sheet-heading'>{adding.heading}</Heading>}
+        <RadioGroup
+          className='classic-radio-group'
+          aria-label='What to add'
+          orientation='horizontal'
+          value={adding.mode}
+          onChange={mode => onMode(mode as AddMusicMode)}
+        >
+          {adding.modes.map(({ mode, label, mnemonic }) => (
+            <Radio key={mode} value={mode} className='classic-radio'>
+              <span className='classic-radio-dot' aria-hidden='true' />
+              <MnemonicLabel label={label} mnemonic={mnemonic} />
+            </Radio>
+          ))}
+        </RadioGroup>
+        {/* Both have room kept for the longest, so the buttons stay where they are as the choice changes or a problem appears. */}
+        <div className='classic-dialog-fields'>
+          {adding.fields.map(each => <AddMusicTextField key={each.field} field={each} onText={onText} />)}
+          <ul className='classic-dialog-help'>
+            {adding.help.map(line => <li key={line}>{line}</li>)}
+          </ul>
+        </div>
+        <div className='classic-dialog-problem-slot'>
+          {adding.problem && <p className='classic-dialog-problem' role='alert'>{adding.problem}</p>}
+        </div>
+        <div className='classic-dialog-buttons' data-side={layout.defaultButton === 'first' ? 'windows' : 'mac'}>
+          {orderDialogButtons(adding.buttons, layout).map(button => (
+            <Button
+              key={button.id}
+              className='classic-button'
+              data-role={button.role}
+              type={button.role === 'default' ? 'submit' : 'button'}
+              isDisabled={!button.enabled}
+              onPress={button.role === 'default' ? undefined : () => onButton(button.id)}
+            >
+              <MnemonicLabel label={button.label} mnemonic={button.mnemonic} />
+            </Button>
+          ))}
+        </div>
+      </form>
+    </Dialog>
+  )
+
+  if (ownWindow) {
+    return (
+      <div
+        className='classic-dialog classic-own-window'
+        role='presentation'
+        data-style='window'
+        onKeyDown={event => { if (cancel && event.key === 'Escape' && !event.defaultPrevented) onButton(cancel.id) }}
+      >
+        {dialog}
+      </div>
+    )
+  }
+
   return (
     <ModalOverlay
       className='classic-dialog-overlay'
@@ -80,64 +156,7 @@ export function AddMusicWindow ({ adding, layout, container, onMode, onText, onB
       onOpenChange={open => { if (!open && cancel) onButton(cancel.id) }}
     >
       <Modal className={sheet ? 'classic-sheet' : 'classic-dialog'} data-style={layout.dialogStyle}>
-        <Dialog className='classic-dialog-content' aria-label={titled ? undefined : adding.heading}>
-          {titled && (
-            <TitleBar
-              title={<Heading slot='title' className='classic-title'>{adding.heading}</Heading>}
-              layout={layout}
-              controls={cancel ? ['close'] : []}
-              onWindow={action => { if (action === 'close' && cancel) onButton(cancel.id) }}
-            />
-          )}
-          <form
-            ref={formRef}
-            className='classic-dialog-body'
-            onSubmit={event => {
-              event.preventDefault()
-              if (primary?.enabled) onButton(primary.id)
-            }}
-          >
-            {!titled && <Heading slot='title' className='classic-sheet-heading'>{adding.heading}</Heading>}
-            <RadioGroup
-              className='classic-radio-group'
-              aria-label='What to add'
-              orientation='horizontal'
-              value={adding.mode}
-              onChange={mode => onMode(mode as AddMusicMode)}
-            >
-              {adding.modes.map(({ mode, label, mnemonic }) => (
-                <Radio key={mode} value={mode} className='classic-radio'>
-                  <span className='classic-radio-dot' aria-hidden='true' />
-                  <MnemonicLabel label={label} mnemonic={mnemonic} />
-                </Radio>
-              ))}
-            </RadioGroup>
-            {/* Both have room kept for the longest, so the buttons stay where they are as the choice changes or a problem appears. */}
-            <div className='classic-dialog-fields'>
-              {adding.fields.map(each => <AddMusicTextField key={each.field} field={each} onText={onText} />)}
-              <ul className='classic-dialog-help'>
-                {adding.help.map(line => <li key={line}>{line}</li>)}
-              </ul>
-            </div>
-            <div className='classic-dialog-problem-slot'>
-              {adding.problem && <p className='classic-dialog-problem' role='alert'>{adding.problem}</p>}
-            </div>
-            <div className='classic-dialog-buttons' data-side={layout.defaultButton === 'first' ? 'windows' : 'mac'}>
-              {orderDialogButtons(adding.buttons, layout).map(button => (
-                <Button
-                  key={button.id}
-                  className='classic-button'
-                  data-role={button.role}
-                  type={button.role === 'default' ? 'submit' : 'button'}
-                  isDisabled={!button.enabled}
-                  onPress={button.role === 'default' ? undefined : () => onButton(button.id)}
-                >
-                  <MnemonicLabel label={button.label} mnemonic={button.mnemonic} />
-                </Button>
-              ))}
-            </div>
-          </form>
-        </Dialog>
+        {dialog}
       </Modal>
     </ModalOverlay>
   )
