@@ -29,10 +29,12 @@ type Host struct {
 	// AutoLoad starts loading the songs of the list in the background as soon as it has a link
 	// that has not been loaded, so the person never presses a button for it.
 	AutoLoad bool
-	// ListDir is the folder lists are opened from and saved to by default.
+	// ListDir is the app's own folder of lists: where a list that has no file of its own is kept.
 	ListDir string
+	// DocumentsDir is where the file windows start when no folder was kept yet. Empty to start in ListDir.
+	DocumentsDir string
 	// LastDir is the folder the file windows start in: the one the last list was opened from or saved
-	// to. Empty to start in ListDir. RememberDir, when set, is called with each new one.
+	// to. Empty to start in DocumentsDir. RememberDir, when set, is called with each new one.
 	LastDir     string
 	RememberDir func(dir string)
 	// PickFile shows the operating system's own open-file window, starting in start, and

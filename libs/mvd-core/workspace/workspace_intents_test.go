@@ -132,3 +132,53 @@ func TestTheFileWindowsStartInTheLastFolderUsedAndRememberIt(t *testing.T) {
 		t.Errorf("remembered %q, start %q, want %q", remembered, next.(Model).startDir(), want)
 	}
 }
+
+func TestTheFileWindowsStartInDocumentsUntilAFolderIsKept(t *testing.T) {
+	var picked string
+	host := Host{
+		ListDir:      filepath.Join("app", "lists"),
+		DocumentsDir: "documents",
+		PickFile: func(start string) (string, bool, error) {
+			picked = start
+			return "", false, nil
+		},
+	}
+	_, cmd := choose(sized(New(host, config.Config{}, nil)), entryOpen)
+	cmd()
+	if picked != "documents" {
+		t.Errorf("Open started in %q, want the Documents folder", picked)
+	}
+}
+
+func TestSavingAsADraftStartsInTheLastFolderAndKeepsNoDraftFolder(t *testing.T) {
+	lists, kept := t.TempDir(), t.TempDir()
+	draft := filepath.Join(lists, "Untitled list.mvd")
+	if err := downloadlist.New([]string{"https://a"}).Save(draft); err != nil {
+		t.Fatal(err)
+	}
+	list, err := downloadlist.Open(draft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var offered, remembered string
+	host := Host{
+		ListDir:      lists,
+		DocumentsDir: "documents",
+		LastDir:      kept,
+		SaveFile: func(dir, name string) (string, bool, error) {
+			offered = dir
+			return "", false, nil
+		},
+		RememberDir: func(dir string) { remembered = dir },
+	}
+	m := sized(New(host, config.Config{}, list))
+	_, cmd := choose(m, entrySaveAs)
+	cmd()
+	if offered != kept {
+		t.Errorf("Save as of a draft started in %q, want the last folder %q", offered, kept)
+	}
+	m.save("")
+	if remembered != "" {
+		t.Errorf("saving the draft kept its folder %q as the last one", remembered)
+	}
+}

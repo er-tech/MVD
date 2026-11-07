@@ -400,8 +400,8 @@ func (m Model) askWhereToSave(p purpose) (Model, program.Cmd) {
 		return m.ask(p, "Save the list as", m.defaultPath()), nil
 	}
 	dir := m.startDir()
-	if p := m.session.Path(); p != "" {
-		dir = filepath.Dir(p) // a list that has a file is saved beside it
+	if p := m.session.Path(); p != "" && !m.isDraft(p) {
+		dir = filepath.Dir(p) // a list the person put in a file is saved beside it
 	}
 	save, name := m.host.SaveFile, filepath.Base(m.defaultPath())
 	return m, func() program.Msg {
@@ -410,19 +410,29 @@ func (m Model) askWhereToSave(p purpose) (Model, program.Cmd) {
 	}
 }
 
-// startDir is the folder the file windows start in: the last one used, else the folder of lists.
+// startDir is the folder the file windows start in: the last one used, else the Documents folder,
+// else the app's folder of lists.
 func (m Model) startDir() string {
 	if m.lastDir != "" {
 		return m.lastDir
+	}
+	if m.host.DocumentsDir != "" {
+		return m.host.DocumentsDir
 	}
 
 	return m.host.ListDir
 }
 
-// rememberDir keeps the folder of path as the one the file windows start in next time.
+// isDraft says whether path is a list the app keeps for itself, in its own folder of lists.
+func (m Model) isDraft(path string) bool {
+	return m.host.ListDir != "" && filepath.Clean(filepath.Dir(path)) == filepath.Clean(m.host.ListDir)
+}
+
+// rememberDir keeps the folder of path as the one the file windows start in next time. A draft
+// does not count: it is in the app's folder, which is not one the person chose.
 func (m *Model) rememberDir(path string) {
 	dir := filepath.Dir(path)
-	if path == "" || dir == m.lastDir {
+	if path == "" || dir == m.lastDir || m.isDraft(path) {
 		return
 	}
 	m.lastDir = dir
@@ -435,7 +445,7 @@ func (m Model) defaultPath() string {
 	if p := m.session.Path(); p != "" {
 		return p
 	}
-	return filepath.Join(m.host.ListDir, "list"+playlistfile.Extension)
+	return filepath.Join(m.startDir(), "list"+playlistfile.Extension)
 }
 
 func (m *Model) save(path string) {

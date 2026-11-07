@@ -53,3 +53,24 @@ func DefaultVideosDir() string {
 	}
 	return filepath.Join(DefaultDownloadsDir(), "MVD")
 }
+
+// DefaultDocumentsDir is where the file windows of Open and Save as start the first time: the
+// person's Documents folder, as the system says where it is, else Documents in the home folder,
+// else the home folder.
+func DefaultDocumentsDir() string {
+	if dir := systemDocumentsDir(); dir != "" {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			return dir
+		}
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return "."
+	}
+	documents := filepath.Join(home, "Documents")
+	if info, err := os.Stat(documents); err == nil && info.IsDir() {
+		return documents
+	}
+
+	return home
+}
