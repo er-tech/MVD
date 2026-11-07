@@ -114,3 +114,5 @@ depends_on = ["^build", "^typecheck"]
 
 [agent]
 enabled = false
+
+[conventions.vertical-slices]
