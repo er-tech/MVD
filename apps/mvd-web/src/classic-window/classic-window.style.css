@@ -345,16 +345,35 @@
 
 .classic-window-panes {
   display: grid;
-  grid-template-columns: minmax(200px, 1fr) 2.4fr;
-  grid-template-rows: 1fr minmax(90px, 0.45fr);
-  gap: 6px;
+  /* The sources, a bar, the songs; the lists, a bar, the details. Dragging a bar sets a size inline. */
+  grid-template-columns: minmax(200px, 1fr) 6px 2.4fr;
+  grid-template-rows: 1fr 6px minmax(90px, 0.45fr);
   box-sizing: border-box;
   height: 100%;
   padding: 6px;
 }
 
-.classic-window-panes > :last-child {
-  grid-column: 1 / -1;
+.classic-window-panes > .classic-sources { grid-area: 1 / 1; }
+.classic-window-panes > .classic-songs { grid-area: 1 / 3; }
+.classic-window-panes > .classic-details { grid-area: 3 / 1 / 4 / -1; }
+
+/* The bars between the panes draw nothing: the gap is the theme's. */
+.classic-splitter {
+  touch-action: none;
+}
+
+.classic-splitter[data-orientation='vertical'] {
+  grid-area: 1 / 2;
+  cursor: col-resize;
+}
+
+.classic-splitter[data-orientation='horizontal'] {
+  grid-area: 2 / 1 / 3 / -1;
+  cursor: row-resize;
+}
+
+.classic-splitter:focus-visible {
+  outline: 1px dotted currentcolor;
 }
 
 /* Status line. */

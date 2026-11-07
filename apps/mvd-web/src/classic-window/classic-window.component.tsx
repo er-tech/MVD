@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { layoutOf, type ClassicTheme, type ChromeLayout, type WindowControl } from '../classic-themes'
 import type { WorkspaceIntent, WorkspaceSnapshot } from '../workspace-snapshot'
 import { MenuBar } from './menu-bar.component'
@@ -8,6 +8,8 @@ import { useThemeOnRoot } from './theme-root.hook'
 import { StatusLine } from './status-line.component'
 import { TitleBar } from './title-bar.component'
 import { ActionsToolbar } from './actions-toolbar.component'
+import { PaneSplitter } from './pane-splitter.component'
+import { usePaneSizes } from './pane-sizes.hook'
 
 interface ClassicWindowProps {
   theme:    ClassicTheme
@@ -32,6 +34,8 @@ interface ClassicWindowProps {
 export function ClassicWindow ({ theme, scheme, snapshot, onIntent, children, overlay }: ClassicWindowProps) {
   const layout = layoutOf(theme)
   const [inside, setInside] = useState<HTMLDivElement | null>(null)
+  const panesRef = useRef<HTMLDivElement>(null)
+  const [sizes, resize] = usePaneSizes()
 
   useThemeOnRoot(theme, scheme)
   useMnemonicCues(layout.mnemonics)
@@ -39,6 +43,11 @@ export function ClassicWindow ({ theme, scheme, snapshot, onIntent, children, ov
 
   const covering = inside ? overlay?.(inside, layout) : undefined
   const onWindow = (action: WindowControl) => onIntent({ kind: 'window', action })
+  // The theme sizes the panes until the person drags a bar; then the pane they sized keeps their size.
+  const grid: CSSProperties = {
+    ...(sizes.sources !== null && { gridTemplateColumns: `${sizes.sources}px 6px minmax(0, 1fr)` }),
+    ...(sizes.details !== null && { gridTemplateRows: `minmax(0, 1fr) 6px ${sizes.details}px` }),
+  }
 
   return (
     <div className='classic-window' data-family={theme.family} data-activity={snapshot.activity}>
@@ -47,7 +56,11 @@ export function ClassicWindow ({ theme, scheme, snapshot, onIntent, children, ov
       <ActionsToolbar buttons={snapshot.toolbar} onButton={id => onIntent({ kind: 'button', id })} />
       {/* Drawn again for each theme, so the scroll bars are made in the new theme's style. */}
       <div key={theme.id} ref={setInside} className='classic-window-inside'>
-        <div className='classic-window-panes'>{children}</div>
+        <div ref={panesRef} className='classic-window-panes' style={grid}>
+          {children}
+          <PaneSplitter orientation='vertical' panes={panesRef} onSize={px => resize({ sources: px })} />
+          <PaneSplitter orientation='horizontal' panes={panesRef} onSize={px => resize({ details: px })} />
+        </div>
         {covering}
       </div>
       <StatusLine status={snapshot.status} layout={layout} />
