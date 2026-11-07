@@ -262,3 +262,41 @@ func TestTheOwnUploadIsNeverCheckedOrRejected(t *testing.T) {
 		t.Errorf("got %+v, checked %v", st, checked)
 	}
 }
+
+// A list opened from a file shows what it plans for each song, and downloads nothing until the
+// songs are released.
+func TestAHeldRunFromAPlanShowsTheSongsPlannedAndDownloadsNothing(t *testing.T) {
+	t.Setenv("MVD_STUB_YTDLP", "1")
+	upload := func(id, title string, index int) ytdlp.PlaylistEntry {
+		return ytdlp.PlaylistEntry{ID: id, Title: title, Channel: "Artist", PlaylistTitle: "Mine", Playlist: "Mine", PlaylistIndex: index, PlaylistCount: 2}
+	}
+	eng, err := New(Options{
+		YtDlp: os.Args[0], OutputDir: t.TempDir(), Quality: "best", MergeOutputFormat: "mp4", Workers: 2,
+		HoldForReview: true,
+		Plan: []PlannedEntry{
+			{Playlist: "Mine", PlaylistURL: "https://youtube.com/playlist?list=M", Upload: upload("aaaaaaaaaa1", "One", 1), TargetID: "aaaaaaaaaa1", Kind: KindOriginal},
+			{Playlist: "Mine", PlaylistURL: "https://youtube.com/playlist?list=M", Upload: upload("aaaaaaaaaa2", "Two", 2), TargetID: "OFFICIAL002", Kind: KindOfficial},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { eng.Run(ctx); close(done) }()
+	events := collect(t, eng)
+
+	states := final(events)
+	if st := states[0]; st.State != StatePlanned || st.TargetID != "aaaaaaaaaa1" {
+		t.Errorf("the original: %+v, want it planned", st)
+	}
+	if st := states[1]; st.State != StatePlanned || !st.Official {
+		t.Errorf("the official video: %+v, want it planned", st)
+	}
+
+	if released := eng.ReleaseAll(); released != 2 {
+		t.Errorf("released %d songs, want 2", released)
+	}
+	cancel()
+	<-done
+}
