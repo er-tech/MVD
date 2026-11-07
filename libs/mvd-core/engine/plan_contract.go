@@ -93,7 +93,8 @@ func (e *Engine) planSources() {
 	}
 }
 
-// seedPlan announces the playlists of a plan and hands its entries to the download stage.
+// seedPlan announces the playlists of a plan and hands its entries to the download stage, or, in a run
+// that holds songs for review, shows them planned.
 func (e *Engine) seedPlan() {
 	if len(e.opts.Plan) == 0 {
 		return
@@ -115,9 +116,18 @@ func (e *Engine) seedPlan() {
 		e.emit(EvPlaylistListed{Playlist: src.Index, Title: e.playlistTitles[src.Index], Entries: byPlaylist[src.Index]})
 	}
 	for _, id := range ids {
-		if lookup[id] {
+		switch {
+		case lookup[id]:
 			e.nameQueue.Push(id)
-		} else {
+		case e.opts.HoldForReview:
+			// What the plan says is shown as it is, to be reviewed, and goes to the download stage
+			// only when Release sends it there.
+			e.mu.Lock()
+			en := e.entries[id]
+			e.mu.Unlock()
+			e.setState(en, StatePlanned, "")
+			e.finishOne()
+		default:
 			e.queue.Push(id)
 		}
 	}
