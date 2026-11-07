@@ -339,7 +339,9 @@ func (m Model) choose(name string) (program.Model, program.Cmd) {
 		m.session = downloadlist.New(nil)
 		m.dl.Show(m.session.Preview())
 		m.notice = ""
-		if kept != "" {
+		if m.isRecovery(kept) {
+			m.dropRecovery() // the list was never saved, and the person chose to leave it
+		} else if kept != "" {
 			m.done = "New list. " + filepath.Base(kept) + " is kept: File > Open brings it back"
 		}
 	case entryOpen:
@@ -359,7 +361,7 @@ func (m Model) choose(name string) (program.Model, program.Cmd) {
 		}
 		return m.ask(askOpen, "Open the list", m.defaultPath()), nil
 	case entrySave:
-		if m.session.Path() == "" {
+		if m.session.Path() == "" || m.isRecovery(m.session.Path()) {
 			return m.askWhereToSave(askSaveAs)
 		}
 		m.save("")
@@ -400,7 +402,7 @@ func (m Model) askWhereToSave(p purpose) (Model, program.Cmd) {
 		return m.ask(p, "Save the list as", m.defaultPath()), nil
 	}
 	dir := m.startDir()
-	if p := m.session.Path(); p != "" && !m.isDraft(p) {
+	if p := m.session.Path(); p != "" && !m.isRecovery(p) {
 		dir = filepath.Dir(p) // a list the person put in a file is saved beside it
 	}
 	save, name := m.host.SaveFile, filepath.Base(m.defaultPath())
@@ -423,16 +425,23 @@ func (m Model) startDir() string {
 	return m.host.ListDir
 }
 
-// isDraft says whether path is a list the app keeps for itself, in its own folder of lists.
-func (m Model) isDraft(path string) bool {
-	return m.host.ListDir != "" && filepath.Clean(filepath.Dir(path)) == filepath.Clean(m.host.ListDir)
+// isRecovery says whether path is the recovery file of the app, not a list of the person's own.
+func (m Model) isRecovery(path string) bool {
+	return m.host.RecoveryFile != "" && filepath.Clean(path) == filepath.Clean(m.host.RecoveryFile)
 }
 
-// rememberDir keeps the folder of path as the one the file windows start in next time. A draft
-// does not count: it is in the app's folder, which is not one the person chose.
+// dropRecovery deletes the recovery file: the list is saved, or another one took its place.
+func (m Model) dropRecovery() {
+	if m.host.RecoveryFile != "" {
+		_ = os.Remove(m.host.RecoveryFile)
+	}
+}
+
+// rememberDir keeps the folder of path as the one the file windows start in next time. The
+// recovery file does not count: its folder is the app's, not one the person chose.
 func (m *Model) rememberDir(path string) {
 	dir := filepath.Dir(path)
-	if path == "" || dir == m.lastDir || m.isDraft(path) {
+	if path == "" || dir == m.lastDir || m.isRecovery(path) {
 		return
 	}
 	m.lastDir = dir
@@ -442,10 +451,10 @@ func (m *Model) rememberDir(path string) {
 }
 
 func (m Model) defaultPath() string {
-	if p := m.session.Path(); p != "" {
+	if p := m.session.Path(); p != "" && !m.isRecovery(p) {
 		return p
 	}
-	return filepath.Join(m.startDir(), "list"+playlistfile.Extension)
+	return filepath.Join(m.startDir(), "Untitled list"+playlistfile.Extension)
 }
 
 func (m *Model) save(path string) {
@@ -455,6 +464,9 @@ func (m *Model) save(path string) {
 	}
 	m.done = "Saved " + m.session.Path()
 	m.rememberDir(m.session.Path())
+	if !m.isRecovery(m.session.Path()) {
+		m.dropRecovery()
+	}
 }
 
 // ask opens the one-line question of the window.
@@ -486,6 +498,9 @@ func (m Model) answered(p purpose, text string) (program.Model, program.Cmd) {
 		m.dl.Show(list.Preview())
 		m.done = "Opened " + list.Path()
 		m.rememberDir(list.Path())
+		if !m.isRecovery(list.Path()) {
+			m.dropRecovery()
+		}
 	case askSaveAs:
 		m.save(withExtension(text))
 	case askSaveThenStart, askSaveThenReview:
@@ -551,14 +566,13 @@ func (m Model) start(review bool) (Model, program.Cmd) {
 	}
 	m.loadedKey = m.sourcesKey()
 	if m.session.Path() == "" {
-		// A new list is kept as a draft in the app's own folder, so a download starts at once and
-		// nothing is lost; File > Save as gives it a name of the person's own.
-		if draft := m.draftPath(); draft != "" {
-			if err := m.session.Save(draft); err != nil {
-				m.notice = "Cannot save the list: " + err.Error()
+		// A new list is kept in the recovery file, so a download starts at once and nothing is lost
+		// if the app stops; File > Save as gives it a file of the person's own and removes the copy.
+		if recovery := m.recoveryPath(); recovery != "" {
+			if err := m.session.Save(recovery); err != nil {
+				m.notice = "Cannot keep the list: " + err.Error()
 				return m, nil
 			}
-			m.done = "Kept this list as a draft: " + filepath.Base(draft) + " (File > Open finds it)"
 		}
 	}
 	if m.session.Path() == "" {
@@ -744,29 +758,18 @@ func (m *Model) openFolder() {
 // ListPath is the file the list is kept in, "" while it has none.
 func (m Model) ListPath() string { return m.session.Path() }
 
-// draftPath is where a list that has no file yet is kept when it starts: "Untitled list.mvd" in
-// the app's folder of lists, or "Untitled list 2.mvd" and so on when that is taken. It is "" when
-// the host has no such folder, and the person is asked where to save the list then.
-func (m Model) draftPath() string {
-	dir := m.host.ListDir
-	if dir == "" {
+// recoveryPath is the file that keeps a list with no file of its own while it runs, or "" when the
+// host has none and the person is asked where to save the list then.
+func (m Model) recoveryPath() string {
+	path := m.host.RecoveryFile
+	if path == "" {
 		return ""
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return ""
-	}
-	for n := 1; n < 1000; n++ {
-		name := "Untitled list"
-		if n > 1 {
-			name = fmt.Sprintf("Untitled list %d", n)
-		}
-		path := filepath.Join(dir, name+playlistfile.Extension)
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			return path
-		}
 	}
 
-	return ""
+	return path
 }
 
 // detach lets the run go, keeping what it reported.
