@@ -10,7 +10,7 @@ interface SongsTableProps {
 }
 
 /**
- * The songs of the chosen source: ticked to download, with their progress and status. A row is
+ * The songs of the chosen source: ticked to download, with their progress, status and version. A row is
  * drawn again only when its own song changed: the rows are given as items, and the table keeps what
  * it built for an item that is the same object as before.
  */
@@ -40,6 +40,7 @@ export const SongsTable = memo(function SongsTable ({ songs, onSelect, onTick }:
             <Column className='classic-column'>Song</Column>
             <Column className='classic-column classic-column-progress'>Progress</Column>
             <Column className='classic-column'>Status</Column>
+            <Column className='classic-column'>Version</Column>
           </TableHeader>
           <TableBody className='classic-table-body' items={songs.rows} dependencies={[onTick]}>
             {row => (
@@ -58,6 +59,7 @@ export const SongsTable = memo(function SongsTable ({ songs, onSelect, onTick }:
                 <Cell className='classic-cell'>{row.title}</Cell>
                 <Cell className='classic-cell'><ProgressBar progress={row.progress} label={`${row.title} progress`} /></Cell>
                 <Cell className='classic-cell' data-tone={row.tone}>{row.status}</Cell>
+                <Cell className='classic-cell' data-tone={row.versionTone}>{row.version}</Cell>
               </Row>
             )}
           </TableBody>

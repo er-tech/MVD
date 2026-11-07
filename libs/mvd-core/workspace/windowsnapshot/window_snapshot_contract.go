@@ -106,8 +106,12 @@ type SongRow struct {
 	Artist   string   `json:"artist"`
 	Title    string   `json:"title"`
 	Progress Progress `json:"progress"`
-	Status   string   `json:"status"`
-	Tone     Tone     `json:"tone"`
+	// Status is where the song is in the work (waiting, downloading, saved), and Tone its colour.
+	Status string `json:"status"`
+	Tone   Tone   `json:"tone"`
+	// Version is which video the song has (official, better, original), and VersionTone its colour.
+	Version     string `json:"version"`
+	VersionTone Tone   `json:"versionTone"`
 }
 
 // Songs is the table of songs and which row is chosen.

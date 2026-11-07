@@ -202,9 +202,12 @@ func windowSongs(s downloadsession.Session) windowsnapshot.Songs {
 			continue
 		}
 		row := downloadsnapshot.SongRowOf(s, en)
+		state, stateTone := songlist.StateWord(en)
+		version, versionTone := songlist.VersionWord(en)
 		out.Rows = append(out.Rows, windowsnapshot.SongRow{
 			ID: strconv.Itoa(row.ID), Ticked: row.Ticked, Artist: row.Artist, Title: row.Name,
-			Progress: windowProgress(row), Status: row.Status, Tone: windowTone(row.Tone),
+			Progress: windowProgress(row), Status: state, Tone: windowTone(stateTone),
+			Version: version, VersionTone: windowTone(versionTone),
 		})
 	}
 
