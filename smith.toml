@@ -43,7 +43,7 @@ depends_on = ["stage-web"]
 env = { GOFLAGS = "-tags=desktop,production,webkit2_41" }  # Wails 2: the desktop shell, and WebKitGTK 4.1 on Linux
 
 [projects.mvd.tasks.build-native]
-command = ["node", "-e", "const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd/'+os+'-'+arch+'/mvd'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-tags','desktop,production'+(os==='linux'?',webkit2_41':''),'-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd',stdio:'inherit',env:{...process.env,CGO_ENABLED:os==='windows'?'0':'1'}});process.exit(r.status??1)"]
+command = ["node", "-e", "const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd/'+os+'-'+arch+'/mvd'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-tags','desktop,production'+(os==='linux'?',webkit2_41':''),'-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd',stdio:'inherit',env:{...process.env,CGO_ENABLED:os==='windows'?'0':'1',...(os==='darwin'?{CGO_LDFLAGS:'-framework UniformTypeIdentifiers'}:{})}});process.exit(r.status??1)"]
 cwd = "."
 depends_on = ["stage-web", "fetch-music-fixer"]
 inputs = ["**/*", "{workspaceRoot}/go.mod", "{workspaceRoot}/go.sum"]
