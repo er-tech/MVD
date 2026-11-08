@@ -1,5 +1,0 @@
-
-# The page of the rewrite, copied from dist/apps/mvd2-web by the stage-web task.
-/apps/mvd2/frontend/dist/*
-!/apps/mvd2/frontend/dist/.gitkeep
-/apps/mvd2/build/bin/
