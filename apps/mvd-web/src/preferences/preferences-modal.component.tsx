@@ -1,8 +1,10 @@
-import { Alert, Button, Field, Heading, HStack, Input, NativeSelect, NumberInput, Stack, Switch } from '@chakra-ui/react'
+import { Alert, Button, Stack, Tabs } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
 import type { Backend, PreferenceOptions, Preferences } from '../backend'
-import { YouTubeSignIn } from './youtube-sign-in.component.tsx'
 import { ModalFrame } from '../modalframe'
+import { AdvancedTab } from './advanced-tab.component.tsx'
+import { DownloadTab } from './download-tab.component.tsx'
+import { OutputTab } from './output-tab.component.tsx'
 
 /** The props of {@link PreferencesModal}. */
 export interface PreferencesModalProps {
@@ -14,56 +16,19 @@ export interface PreferencesModalProps {
   onClose: () => void
 }
 
-type SwitchKey = 'saveNotFound' | 'betterAudio' | 'autoRetry' | 'checkForUpdates' | 'autoCookies' | 'createLogFile'
-
-const officialLabels: Record<string, string> = {
-  yes:  'Use the official video when there is one',
-  no:   'Never look for it',
-  only: 'Only songs that have one',
-}
-
-const songSwitches: { key: SwitchKey, label: string }[] = [
-  { key: 'saveNotFound', label: 'Keep a list of the songs not found' },
-  { key: 'betterAudio', label: 'Look for better audio' },
-  { key: 'autoRetry', label: 'Try a failed song again' },
-]
-
-const appSwitches: { key: SwitchKey, label: string }[] = [
-  { key: 'checkForUpdates', label: 'Check for updates' },
-  { key: 'autoCookies', label: 'Take the cookies from the browser' },
-  { key: 'createLogFile', label: 'Write a log file' },
-]
-
 interface LoadedPreferences {
   values:  Preferences
   options: PreferenceOptions
-}
-
-const plain = (names: string[]) => names.map(name => ({ value: name, label: name }))
-
-function SelectField ({ label, value, choices, onChange }: {
-  label:    string
-  value:    string
-  choices:  { value: string, label: string }[]
-  onChange: (value: string) => void
-}) {
-  return (
-    <Field.Root>
-      <Field.Label>{label}</Field.Label>
-      <NativeSelect.Root>
-        <NativeSelect.Field value={value} onChange={event => onChange(event.target.value)}>
-          {choices.map(choice => <option key={choice.value} value={choice.value}>{choice.label}</option>)}
-        </NativeSelect.Field>
-        <NativeSelect.Indicator />
-      </NativeSelect.Root>
-    </Field.Root>
-  )
 }
 
 function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'open'>) {
   const [loaded, setLoaded] = useState<LoadedPreferences | null>(null)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const fail = (error_: unknown) => {
+    setError(error_ instanceof Error ? error_.message : String(error_))
+  }
 
   useEffect(() => {
     let current = true
@@ -72,7 +37,7 @@ function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'ope
         const [values, options] = await Promise.all([backend.getPreferences(), backend.getPreferenceOptions()])
         if (current) setLoaded({ values, options })
       } catch (error_) {
-        if (current) setError(error_ instanceof Error ? error_.message : String(error_))
+        if (current) fail(error_)
       }
     }
     void load()
@@ -86,15 +51,6 @@ function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'ope
     setLoaded(previous => previous && { ...previous, values: { ...previous.values, ...patch } })
   }
 
-  const browse = async () => {
-    try {
-      const folder = await backend.pickOutputFolder()
-      if (folder !== '') change({ outputDir: folder })
-    } catch (error_) {
-      setError(error_ instanceof Error ? error_.message : String(error_))
-    }
-  }
-
   const save = async () => {
     if (!loaded) return
     setSaving(true)
@@ -102,29 +58,17 @@ function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'ope
       await backend.setPreferences(loaded.values)
       onClose()
     } catch (error_) {
-      setError(error_ instanceof Error ? error_.message : String(error_))
+      fail(error_)
       setSaving(false)
     }
   }
-
-  const switches = (list: { key: SwitchKey, label: string }[], values: Preferences) => list.map(item => (
-    <Switch.Root
-      key={item.key}
-      checked={values[item.key]}
-      onCheckedChange={event => change({ [item.key]: event.checked })}
-    >
-      <Switch.HiddenInput />
-      <Switch.Control />
-      <Switch.Label>{item.label}</Switch.Label>
-    </Switch.Root>
-  ))
 
   return (
     <ModalFrame
       open
       onClose={onClose}
       title='Preferences'
-      size='lg'
+      size='xl'
       footer={(
         <>
           <Button variant='ghost' onClick={onClose}>Cancel</Button>
@@ -140,59 +84,22 @@ function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'ope
           </Alert.Root>
         )}
         {loaded && (
-          <>
-            <Heading size='sm'>Downloads</Heading>
-            <Field.Root>
-              <Field.Label>Output folder</Field.Label>
-              <HStack w='full'>
-                <Input readOnly value={loaded.values.outputDir} />
-                <Button variant='outline' onClick={() => void browse()}>Browse…</Button>
-              </HStack>
-            </Field.Root>
-            <Field.Root>
-              <Field.Label>Downloads at the same time</Field.Label>
-              <NumberInput.Root
-                min={loaded.options.minDownloads}
-                max={loaded.options.maxDownloads}
-                value={String(loaded.values.maxDownloads)}
-                onValueChange={event => {
-                  if (!Number.isNaN(event.valueAsNumber)) change({ maxDownloads: event.valueAsNumber })
-                }}
-              >
-                <NumberInput.Control />
-                <NumberInput.Input />
-              </NumberInput.Root>
-            </Field.Root>
-            <Field.Root>
-              <Field.Label>File name template</Field.Label>
-              <Input value={loaded.values.outputTemplate} onChange={event => change({ outputTemplate: event.target.value })} />
-            </Field.Root>
-
-            <Heading size='sm'>Songs</Heading>
-            <SelectField
-              label='Video quality'
-              value={loaded.values.videoQuality}
-              choices={plain(loaded.options.videoQualities)}
-              onChange={videoQuality => change({ videoQuality })}
-            />
-            <SelectField
-              label='Audio quality'
-              value={loaded.values.audioQuality}
-              choices={plain(loaded.options.audioQualities)}
-              onChange={audioQuality => change({ audioQuality })}
-            />
-            <SelectField
-              label='Official video'
-              value={loaded.values.officialVideo}
-              choices={loaded.options.officialVideos.map(value => ({ value, label: officialLabels[value] ?? value }))}
-              onChange={officialVideo => change({ officialVideo })}
-            />
-            {switches(songSwitches, loaded.values)}
-
-            <Heading size='sm'>App</Heading>
-            {switches(appSwitches, loaded.values)}
-            <YouTubeSignIn backend={backend} />
-          </>
+          <Tabs.Root defaultValue='output' variant='line'>
+            <Tabs.List>
+              <Tabs.Trigger value='output'>Output</Tabs.Trigger>
+              <Tabs.Trigger value='download'>Download</Tabs.Trigger>
+              <Tabs.Trigger value='advanced'>Advanced</Tabs.Trigger>
+            </Tabs.List>
+            <Tabs.Content value='output'>
+              <OutputTab values={loaded.values} options={loaded.options} change={change} backend={backend} fail={fail} />
+            </Tabs.Content>
+            <Tabs.Content value='download'>
+              <DownloadTab values={loaded.values} options={loaded.options} change={change} backend={backend} fail={fail} />
+            </Tabs.Content>
+            <Tabs.Content value='advanced'>
+              <AdvancedTab values={loaded.values} options={loaded.options} change={change} backend={backend} fail={fail} />
+            </Tabs.Content>
+          </Tabs.Root>
         )}
       </Stack>
     </ModalFrame>
@@ -202,7 +109,8 @@ function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'ope
 /**
  * The window where the person changes the preferences.
  *
- * It loads the values and the choices from the backend each time it opens.
+ * It loads the values and the choices from the backend each time it opens, and shows them in the tabs
+ * Output, Download and Advanced.
  * Save sends the values. A refusal shows in the modal, which stays open. Cancel sends nothing.
  *
  * @param props - see {@link PreferencesModalProps}.

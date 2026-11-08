@@ -31,6 +31,7 @@ export function ModalFrame ({ open, onClose, title, children, footer, size = 'md
         if (!event.open) onClose()
       }}
       size={size}
+      scrollBehavior='inside'
       lazyMount
       unmountOnExit
     >

@@ -22,18 +22,31 @@ export interface Detail {
 
 /** The settings of the Preferences window. */
 export interface Preferences {
-  outputDir:       string
-  videoQuality:    string
-  audioQuality:    string
-  outputTemplate:  string
-  maxDownloads:    number
-  officialVideo:   string
-  saveNotFound:    boolean
-  betterAudio:     boolean
-  autoRetry:       boolean
-  checkForUpdates: boolean
-  autoCookies:     boolean
-  createLogFile:   boolean
+  outputDir:           string
+  videoQuality:        string
+  audioQuality:        string
+  outputTemplate:      string
+  maxDownloads:        number
+  officialVideo:       string
+  saveNotFound:        boolean
+  betterAudio:         boolean
+  autoRetry:           boolean
+  checkForUpdates:     boolean
+  createLogFile:       boolean
+  /** The folder the log is written to. */
+  logDir:              string
+  /** The kind of video file made, one of `PreferenceOptions.mergeFormats`. */
+  mergeFormat:         string
+  /** How many times a failed download is tried again before it is given up. */
+  retryCycles:         number
+  /** The wait before the first retry, times the number of the attempt. */
+  retryWaitSeconds:    number
+  /** How many parts of a video come at once, 0 for one at a time. */
+  concurrentFragments: number
+  /** How long a download may take to start before it is stopped. */
+  startTimeoutSeconds: number
+  /** Where the YouTube login comes from, one of `PreferenceOptions.cookieSources`. */
+  cookieSource:        string
 }
 
 /** The choices of the fields that offer a list. */
@@ -43,6 +56,12 @@ export interface PreferenceOptions {
   officialVideos: string[]
   minDownloads:   number
   maxDownloads:   number
+  mergeFormats:   string[]
+  cookieSources:  string[]
+  /** Which actions this system offers. */
+  canSignIn:      boolean
+  canMove:        boolean
+  canUninstall:   boolean
 }
 
 /** Whether the tools of the downloads are ready. */

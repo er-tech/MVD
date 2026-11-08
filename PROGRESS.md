@@ -26,6 +26,9 @@ About and every question in a window of their own, #467). #471 was closed: not r
    yt-dlp or ffmpeg left (a Windows job object).
 5. Modals, Preferences, menus. **Done.** Add, Preferences (with the YouTube sign-in), About (with the update
    check), shortcuts, recovery, quit question; native menu; keys and menu end in one function.
+   Preferences has the tabs Output, Download and Advanced with every setting and description of the old window,
+   the file name pattern as blocks to add, remove and drag, and the move, uninstall and sign-in buttons where
+   the system offers them. **Left out:** the Theme tab (the classic window styles do not exist in the new page).
 6. Packaging and updater. **Done for Windows.** smith builds with the `desktop,production` tags and stages the
    page into `apps/mvd/frontend/dist`. The self-update, tool updates, move offer, file type and uninstall
    code of the old app is kept. **Not verified:** Mac and Linux builds, the DMG, signing.
