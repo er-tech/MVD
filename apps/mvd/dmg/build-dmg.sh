@@ -19,7 +19,7 @@ mkdir -p "$work" "$drop"
 # One program per architecture, and one that joins them. The build flags match the
 # build-native target, apart from -H, which is Windows only.
 for arch in arm64 amd64; do
-  (cd apps/mvd && GOOS=darwin GOARCH="$arch" CGO_ENABLED=1 \
+  (cd apps/mvd && GOOS=darwin GOARCH="$arch" CGO_ENABLED=1 CGO_LDFLAGS="-framework UniformTypeIdentifiers" \
     go build -trimpath -tags desktop,production -ldflags "-s -w -X main.version=$version" -o "../../$work/mvd-$arch" .)
 done
 lipo -create -output "$work/mvd-universal" "$work/mvd-arm64" "$work/mvd-amd64"
