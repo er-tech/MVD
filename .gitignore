@@ -100,3 +100,4 @@ test-output
 /apps/mvd2/frontend/dist/*
 !/apps/mvd2/frontend/dist/.gitkeep
 /apps/mvd2/build/bin/
+/apps/mvd2-web/src/wailsjs/

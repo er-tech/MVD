@@ -7,7 +7,15 @@ About and every question in a window of their own, #467). #471 was closed: not r
 
 ## Phases
 
-0. Prototype: 5,000 live rows, a download, a clean close. **Next.**
+0. Prototype: 5,000 live rows, a stand-in child program, a clean close. **Done** (2026-11-08, Windows).
+   Result: 10,000 row changes a second gave 0 long tasks, about 60 rows drawn a second (only the rows in
+   view that changed), 14% of one core for the app and its web view together, and a close in 31 ms with no
+   process left. A clicked row stayed selected while the data changed. Not yet measured: Mac and Linux, a
+   real yt-dlp child, the time from click to selection.
+   Code: `libs/mvd-state` (songrows, changefeed), `apps/mvd2` (bridge, childprocs, simulation),
+   `apps/mvd2-web` (rowstore, rowsync, backend, songtable, metrics).
+   Open: how smith runs `wails build` and stages the page (the build is by hand for now:
+   `cp dist/apps/mvd2-web/. apps/mvd2/frontend/dist/`, then `wails build -s` in `apps/mvd2`).
 1. Store, bound methods and events. 2. Page shell and virtual table. 3. Details panel.
 4. Start and downloads. 5. Modals, Preferences, menus. 6. Packaging and updater. 7. Cutover.
 
