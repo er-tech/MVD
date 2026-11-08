@@ -1,6 +1,6 @@
 # Rewrite: a new window on Wails 2
 
-Status: proposed. Decided with the user on 2026-11-07. Epic: see PROGRESS.md.
+Status: built on the branch `rewrite` (2026-11-08), not merged. Decided with the user on 2026-11-07. Epic: see PROGRESS.md.
 
 ## Why
 
@@ -91,10 +91,10 @@ and checks that no process remains.
 
 ## Folders (proposed)
 
-- `apps/mvd2`: Wails 2 shell, the bound methods, the menus. Thin.
+- `apps/mvd`: the Wails 2 shell (`bridge`, `runhost`, `preferences`, `appmenu`, `childprocs`) and the platform code.
 - `libs/mvd-core/...`: the engine, as today.
 - `libs/mvd-state` (new): the store, the revisions, the flush loop and the event shapes.
-- `apps/mvd2-web`: the page, in vertical slices.
+- `apps/mvd-web`: the page, in vertical slices.
 
 ## Phases
 
