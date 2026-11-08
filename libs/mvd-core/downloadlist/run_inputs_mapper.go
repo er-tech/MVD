@@ -35,8 +35,10 @@ func (s *Session) Inputs() (sources []string, plan []engine.PlannedEntry) {
 }
 
 // notLookedUp says whether a song is still to be downloaded and nobody has found its video
-// yet: no video, no decision, and not found to have none.
+// yet: no video, no decision, and not found to have none. The run writes Kind "none" for a song
+// it has not got to, so the kind says nothing here: StateNotFound is the mark of a song looked up
+// that has no video.
 func notLookedUp(song playlistfile.Entry) bool {
 	return playlisteditor.Pending(song) && !playlisteditor.Revised(song) && song.TargetID == "" &&
-		song.State != playlistfile.StateNotFound && engine.PlanKind(song.Kind) != engine.KindNone
+		song.State != playlistfile.StateNotFound
 }

@@ -197,6 +197,29 @@ func TestTheAddressOfASearchIsKeptAsItIsAndComesBackToBeListed(t *testing.T) {
 	}
 }
 
+// The run writes Kind "none" for a song it has not got to. Opening the file must still give the song
+// back, or a playlist the run had not reached would vanish from the list.
+func TestAListedSongTheRunHadNotGotToComesBackToBeLookedUp(t *testing.T) {
+	waiting := snap("one", 1, engine.StateQueued, "")
+	waiting.Kind = engine.KindNone
+	notFound := snap("two", 2, engine.StateNotFound, "")
+	notFound.Kind = engine.KindNone
+	s := New([]string{listURL})
+	s.Apply([]engine.EntrySnapshot{waiting, notFound})
+	path := filepath.Join(t.TempDir(), "list.mvd")
+	if err := s.Save(path); err != nil {
+		t.Fatal(err)
+	}
+	back, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, plan := back.Inputs()
+	if len(sources) != 0 || len(plan) != 1 || plan[0].Upload.ID != "one" || plan[0].TargetID != "" {
+		t.Errorf("sources %q, plan %+v: want only song one, to be looked up", sources, plan)
+	}
+}
+
 func TestTheSongsASearchFoundAreKeptAndOnlyTheOnesNotFoundYetAreSearchedForAgain(t *testing.T) {
 	address := musicsearch.Query{Artist: "Daft Punk"}.Address()
 	found := engine.EntrySnapshot{
