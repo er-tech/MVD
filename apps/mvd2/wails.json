@@ -1,7 +1,0 @@
-{
-  "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "mvd2",
-  "outputfilename": "mvd2",
-  "frontend:dir": "frontend",
-  "wailsjsdir": "../mvd2-web/src/wailsjs"
-}

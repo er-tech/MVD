@@ -96,8 +96,8 @@ test-output
 # smith
 .smith/
 
-# The page of the rewrite, copied from dist/apps/mvd2-web by the stage-web task.
-/apps/mvd2/frontend/dist/*
-!/apps/mvd2/frontend/dist/.gitkeep
-/apps/mvd2/build/bin/
-/apps/mvd2-web/src/wailsjs/
+# The page of the rewrite, copied from dist/apps/mvd-web by the stage-web task.
+/apps/mvd/frontend/dist/*
+!/apps/mvd/frontend/dist/.gitkeep
+/apps/mvd/build/bin/
+/apps/mvd-web/src/wailsjs/

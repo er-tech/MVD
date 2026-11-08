@@ -59,7 +59,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
-          key: smith-go-${{ runner.os }}-${{ hashFiles('apps/mvd/go.sum', 'libs/mvd-core/go.sum', 'libs/mvd-state/go.sum', 'apps/mvd2/go.sum') }}
+          key: smith-go-${{ runner.os }}-${{ hashFiles('apps/mvd/go.sum', 'libs/mvd-core/go.sum', 'libs/mvd-state/go.sum') }}
           restore-keys: |
             smith-go-${{ runner.os }}-
       - name: Cache the npm download store
