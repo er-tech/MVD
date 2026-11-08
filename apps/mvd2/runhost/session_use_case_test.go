@@ -353,3 +353,19 @@ func TestWaitWithNoEngineReturnsAtOnce(t *testing.T) {
 		t.Fatal("Wait with no engine did not return true")
 	}
 }
+
+func TestASongThatWaitsIsNotCountedAsSavedAndASingleSongNamesItsSource(t *testing.T) {
+	session, store, fake, _ := newSession(t)
+	_ = session.AddSource("https://example.com/one")
+	ev := listed(0, "https://example.com/one", 0)
+	ev.Entries[0].Title = "The Song"
+	fake.events <- ev
+	fake.events <- engine.EvEntryState{Entry: 0, State: engine.StatePlanned, TargetID: "x"}
+	eventually(t, "the source summary", func() bool {
+		s := store.State()
+		return len(s.Sources) == 1 && s.Sources[0].Songs == 1 && s.Sources[0].Title == "The Song"
+	})
+	if done := store.State().Sources[0].Done; done != 0 {
+		t.Fatalf("source says %d saved for a song that only waits", done)
+	}
+}

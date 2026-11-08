@@ -82,4 +82,15 @@ describe('App', () => {
     await settle()
     expect(backend.calls).toContain('start()')
   })
+
+  it('keeps the shortcuts for a window while it is open', async () => {
+    const backend = await shown()
+    act(() => {
+      backend.sendMenu('add')
+    })
+    await screen.findByText('Add')
+    fireEvent.keyDown(globalThis as unknown as Element, { key: 'Enter', ctrlKey: true })
+    await settle()
+    expect(backend.calls).not.toContain('start()')
+  })
 })

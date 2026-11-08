@@ -94,7 +94,7 @@ func songRow(en *runstate.Entry) library.Song {
 
 // sourceRow is the list row of a playlist, with its counts.
 func sourceRow(st *runstate.State, pl *runstate.Playlist) library.Source {
-	finished, failed, _ := st.PlaylistTally(pl)
+	_, failed, _ := st.PlaylistTally(pl)
 	status := "listing"
 	switch {
 	case pl.Err != "":
@@ -106,13 +106,24 @@ func sourceRow(st *runstate.State, pl *runstate.Playlist) library.Source {
 	return library.Source{
 		ID:     sourceID(pl.Index),
 		URL:    pl.URL,
-		Title:  pl.Title,
+		Title:  titleOf(st, pl),
 		Status: status,
 		Error:  runstate.PlainError(pl.Err),
 		Songs:  len(pl.Entries),
-		Done:   finished - failed,
+		Done:   st.PlaylistDownloaded(pl),
 		Failed: failed,
 	}
+}
+
+// titleOf is the name of a playlist. A single song has no playlist title, so it is called by its song.
+func titleOf(st *runstate.State, pl *runstate.Playlist) string {
+	if pl.Listed && pl.Title == pl.URL && len(pl.Entries) == 1 {
+		if en := st.Entry(pl.Entries[0]); en != nil && en.Title != "" {
+			return en.Title
+		}
+	}
+
+	return pl.Title
 }
 
 // runOf is the state of the run for the footer. started and paused are the person's choices.

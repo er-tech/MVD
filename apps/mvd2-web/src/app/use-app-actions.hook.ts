@@ -7,12 +7,14 @@ import { shortcutList } from '../shortcuts'
 export type ModalName = 'add' | 'preferences' | 'about' | 'shortcuts' | 'quit'
 
 interface AppActions {
-  backend: Backend
-  run:     Run
+  backend:   Backend
+  run:       Run
+  /** True while a window of the page is open: the keys then belong to that window. */
+  modalOpen: boolean
   /** Opens a window of the page. */
-  open:    (modal: ModalName) => void
+  open:      (modal: ModalName) => void
   /** Shows a message from a command that Go refused. */
-  notify:  (message: string) => void
+  notify:    (message: string) => void
 }
 
 /** True when a key press is the shortcut written as `Ctrl+Shift+S`, `F1` and the like. */
@@ -31,10 +33,11 @@ function matches (event: KeyboardEvent, keys: string): boolean {
  *
  * @param actions.backend - the Go side.
  * @param actions.run - the state of the run, to choose between Pause and Resume.
+ * @param actions.modalOpen - whether a window is open, which keeps the keys for itself.
  * @param actions.open - opens a window of the page.
  * @param actions.notify - shows a message.
  */
-export function useAppActions ({ backend, run, open, notify }: AppActions): void {
+export function useAppActions ({ backend, run, open, notify, modalOpen }: AppActions): void {
   const perform = useCallback((action: MenuAction): void => {
     const ask = async (command: () => Promise<unknown>): Promise<void> => {
       try {
@@ -64,6 +67,9 @@ export function useAppActions ({ backend, run, open, notify }: AppActions): void
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
+      if (modalOpen) {
+        return
+      }
       const shortcut = shortcutList.find(candidate => matches(event, candidate.keys))
       if (shortcut === undefined) {
         return
@@ -77,5 +83,5 @@ export function useAppActions ({ backend, run, open, notify }: AppActions): void
     return () => {
       globalThis.removeEventListener('keydown', onKey)
     }
-  }, [perform])
+  }, [perform, modalOpen])
 }

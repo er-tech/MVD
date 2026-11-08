@@ -16,7 +16,7 @@ type Store struct {
 
 // NewStore returns an empty store at revision 0.
 func NewStore() *Store {
-	return &Store{sources: newTable[Source](), songs: newTable[Song]()}
+	return &Store{sources: newTable[Source](), songs: newTable[Song](), run: Run{Phase: "empty"}}
 }
 
 // SetSource adds the source or replaces the one with the same ID. A source equal to the one held is

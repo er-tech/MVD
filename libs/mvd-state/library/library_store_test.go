@@ -189,3 +189,9 @@ func TestARunChangeIsInTheBatchOnlyWhenItChanged(t *testing.T) {
 		t.Fatalf("state %+v, want the run", s.State())
 	}
 }
+
+func TestANewStoreStartsWithAnEmptyRun(t *testing.T) {
+	if got := NewStore().State().Run.Phase; got != "empty" {
+		t.Fatalf("phase %q, want empty", got)
+	}
+}

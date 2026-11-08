@@ -64,7 +64,7 @@ export function App ({ backend }: { backend: Backend }) {
   const closeModal = useCallback(() => {
     setModal(undefined)
   }, [])
-  useAppActions({ backend, run, open: setModal, notify: setNotice })
+  useAppActions({ backend, run, open: setModal, notify: setNotice, modalOpen: modal !== undefined || recovery !== undefined })
 
   const selectSource = useCallback((id: string) => {
     setSelection({ kind: 'source', id })
