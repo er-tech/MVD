@@ -56,14 +56,14 @@ jobs:
         with:
           node-version: '24'
       - name: Cache the go download store
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/go/pkg/mod
           key: smith-go-${{ runner.os }}-${{ hashFiles('apps/mvd/go.sum', 'libs/mvd-core/go.sum', 'libs/mvd-state/go.sum') }}
           restore-keys: |
             smith-go-${{ runner.os }}-
       - name: Cache the npm download store
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: smith-npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
