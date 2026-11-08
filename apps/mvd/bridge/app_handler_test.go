@@ -41,7 +41,6 @@ func (e *stubEngine) Snapshot() []engine.EntrySnapshot { return nil }
 type recorder struct {
 	mu      sync.Mutex
 	batches []library.Batch
-	links   []string
 }
 
 func (r *recorder) emit(_ context.Context, b library.Batch) {
