@@ -36,3 +36,10 @@ func (a *App) Quit() {
 		a.host.Quit(a.context())
 	}
 }
+
+// ConfirmQuit closes the window for good. The page calls it after the person agreed to quit while
+// downloads run, which BeforeClose asked about.
+func (a *App) ConfirmQuit() {
+	a.confirmed.Store(true)
+	a.Quit()
+}

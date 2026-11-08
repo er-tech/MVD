@@ -7,12 +7,14 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"github.com/er-tech/MVD/apps/mvd2/appmenu"
 	"github.com/er-tech/MVD/apps/mvd2/bridge"
 	"github.com/er-tech/MVD/apps/mvd2/childprocs"
 	"github.com/er-tech/MVD/apps/mvd2/preferences"
@@ -55,14 +57,31 @@ func main() {
 	session := runhost.New(ctx, store, runhost.RealBuild(ytDlpPath, logf), prefs.Config, filepath.Join(appDir, "unsaved-list.tmp"))
 	app := bridge.New(store, session, prefs, host(tools), version, cancel)
 
+	// The menu needs the window's context when an item is chosen, and gets it at startup.
+	var window atomic.Value
+	menu := appmenu.Build(func(action string) {
+		ctx, found := window.Load().(context.Context)
+		switch {
+		case !found:
+		case action == "quit":
+			runtime.Quit(ctx)
+		default:
+			runtime.EventsEmit(ctx, "menu", action)
+		}
+	})
+
 	err = wails.Run(&options.App{
-		Title:         "MVD",
-		Width:         1180,
-		Height:        760,
-		MinWidth:      760,
-		MinHeight:     480,
-		AssetServer:   &assetserver.Options{Assets: frontend},
-		OnStartup:     app.Startup,
+		Title:       "MVD",
+		Width:       1180,
+		Height:      760,
+		MinWidth:    760,
+		MinHeight:   480,
+		AssetServer: &assetserver.Options{Assets: frontend},
+		Menu:        menu,
+		OnStartup: func(ctx context.Context) {
+			window.Store(ctx)
+			app.Startup(ctx)
+		},
 		OnBeforeClose: app.BeforeClose,
 		Bind:          []any{app},
 	})
@@ -91,6 +110,9 @@ func host(tools *deps.Preparation) bridge.Host {
 		OpenLink:   runtime.BrowserOpenURL,
 		OpenFolder: openfolder.Open,
 		Quit:       runtime.Quit,
+		AskClose: func(ctx context.Context) {
+			runtime.EventsEmit(ctx, "close-requested")
+		},
 		Tools: func() bridge.Tools {
 			if problem := tools.Problem(); problem != "" {
 				return bridge.Tools{Message: problem, Failed: true}

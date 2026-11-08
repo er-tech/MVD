@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/er-tech/MVD/apps/mvd2/preferences"
@@ -40,6 +41,8 @@ type Host struct {
 	OpenFolder func(path string) error
 	// Quit closes the window.
 	Quit func(context.Context)
+	// AskClose tells the page the window wants to close while downloads run, so it asks the person.
+	AskClose func(context.Context)
 	// Tools says whether the download tools are ready. Nil means they always are.
 	Tools func() Tools
 }
@@ -53,6 +56,8 @@ type App struct {
 	host    Host
 	version string
 	cancel  context.CancelFunc
+	// confirmed is set once the person agreed to quit while downloads run.
+	confirmed atomic.Bool
 
 	mu       sync.Mutex
 	ctx      context.Context
@@ -89,10 +94,16 @@ func (a *App) Startup(ctx context.Context) {
 	})
 }
 
-// BeforeClose ends the session, waits up to two seconds for the engine to stop its programs, and
+// BeforeClose, while downloads run, keeps the window open and asks the page to ask the person. Once the
+// person agrees, or when nothing downloads, it ends the session, waits up to two seconds for the engine to stop its programs, and
 // lets the window close. Wails calls it when the person closes the window. It reports the time it
 // took when MVD2_LOG is set.
-func (a *App) BeforeClose(context.Context) (prevent bool) {
+func (a *App) BeforeClose(ctx context.Context) (prevent bool) {
+	if run := a.store.State().Run; !a.confirmed.Load() && a.host.AskClose != nil && run.Started && run.Phase == "downloading" {
+		a.host.AskClose(ctx)
+
+		return true
+	}
 	started := time.Now()
 	a.mu.Lock()
 	stopFeed := a.stopFeed

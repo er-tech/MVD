@@ -288,3 +288,36 @@ func TestStartWaitsForTheDownloadTools(t *testing.T) {
 		t.Fatalf("Start with the tools: %v", err)
 	}
 }
+
+func TestTheWindowAsksBeforeClosingWhileDownloadsRunAndClosesOnceConfirmed(t *testing.T) {
+	asked := 0
+	quit := 0
+	app, _ := newApp(t, Host{
+		AskClose: func(context.Context) { asked++ },
+		Quit:     func(context.Context) { quit++ },
+	})
+	_ = app.AddSource("https://example.com/list")
+	if err := app.Start(); err != nil {
+		t.Fatal(err)
+	}
+	// The stub engine never finishes, so the run stays in its phase; force the phase the page sees.
+	app.store.SetRun(library.Run{Phase: "downloading", Started: true, Sources: 1})
+	if !app.BeforeClose(context.Background()) || asked != 1 {
+		t.Fatalf("the close was not held and asked about (asked %d)", asked)
+	}
+	app.ConfirmQuit()
+	if quit != 1 {
+		t.Fatalf("quit called %d times, want 1", quit)
+	}
+	if app.BeforeClose(context.Background()) {
+		t.Fatal("the close was held after the person confirmed")
+	}
+}
+
+func TestTheWindowClosesAtOnceWhenNothingDownloads(t *testing.T) {
+	asked := 0
+	app, _ := newApp(t, Host{AskClose: func(context.Context) { asked++ }})
+	if app.BeforeClose(context.Background()) || asked != 0 {
+		t.Fatalf("the close was held with nothing downloading (asked %d)", asked)
+	}
+}
