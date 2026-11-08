@@ -1,3 +1,5 @@
+//go:build windows
+
 // Package signin lets a person sign in to YouTube inside MVD: a window of its own, in a
 // separate program run, keeps the login in a profile folder that yt-dlp can then read.
 package signin

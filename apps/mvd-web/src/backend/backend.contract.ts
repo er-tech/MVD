@@ -57,6 +57,10 @@ export interface Backend {
   signInState:      () => Promise<string>
   /** Open the window to sign in to YouTube. Resolves with what to tell the person. */
   signIn:           () => Promise<string>
+  /** Offer to move the app to its own folder. Resolves with what to tell the person. */
+  moveApp:          () => Promise<string>
+  /** Ask whether to remove the app, and remove it when the person agrees. Resolves with what to tell the person. */
+  uninstallApp:     () => Promise<string>
   /** The .mvd file the app was started with, `` for none. */
   startupList:      () => Promise<string>
   openLink:         (url: string) => Promise<void>

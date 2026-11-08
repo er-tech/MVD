@@ -53,6 +53,12 @@ type Host struct {
 	SignIn func(context.Context) (string, error)
 	// SignInState says whether a YouTube sign-in is kept, in words. Nil where sign-in is not offered.
 	SignInState func() string
+	// Move offers to move the app to its own folder and returns what to tell the person. Nil where the
+	// app cannot be moved.
+	Move func(context.Context) (string, error)
+	// Uninstall asks whether to remove the app and starts the removal when the person agrees. It
+	// returns what to tell the person. Nil where the app cannot be removed.
+	Uninstall func(context.Context) (string, error)
 	// StartupList is the .mvd file the app was started with, "" for none.
 	StartupList string
 	// Tools says whether the download tools are ready. Nil means they always are.

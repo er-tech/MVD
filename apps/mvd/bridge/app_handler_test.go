@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"slices"
 	"context"
 	"errors"
 	"os"
@@ -40,7 +41,6 @@ func (e *stubEngine) Snapshot() []engine.EntrySnapshot { return nil }
 type recorder struct {
 	mu      sync.Mutex
 	batches []library.Batch
-	links   []string
 }
 
 func (r *recorder) emit(_ context.Context, b library.Batch) {
@@ -345,5 +345,40 @@ func TestTheAppInfoMethodsAnswerWhatTheHostGivesAndRefuseWhatItLacks(t *testing.
 	}
 	if got, err := app.SignIn(); err != nil || got != "done" {
 		t.Fatalf("sign in gave %q, %v", got, err)
+	}
+}
+
+func TestTheActionsOfPreferencesAreOfferedOnlyWhereTheHostHasThem(t *testing.T) {
+	none, _ := newApp(t, Host{})
+	options := none.GetPreferenceOptions()
+	if options.CanSignIn || options.CanMove || options.CanUninstall {
+		t.Fatalf("nothing is offered without a host: %+v", options)
+	}
+	for _, source := range options.CookieSources {
+		if source == "mvd" {
+			t.Fatal("the sign-in made inside the app is offered where it cannot be done")
+		}
+	}
+	if _, err := none.MoveApp(); err == nil {
+		t.Fatal("a move was run without a host")
+	}
+	if _, err := none.UninstallApp(); err == nil {
+		t.Fatal("an uninstall was run without a host")
+	}
+
+	app, _ := newApp(t, Host{
+		SignIn:    func(context.Context) (string, error) { return "", nil },
+		Move:      func(context.Context) (string, error) { return "moved", nil },
+		Uninstall: func(context.Context) (string, error) { return "removed", nil },
+	})
+	options = app.GetPreferenceOptions()
+	if !options.CanSignIn || !options.CanMove || !options.CanUninstall || !slices.Contains(options.CookieSources, "mvd") {
+		t.Fatalf("the actions of the host are not offered: %+v", options)
+	}
+	if message, err := app.MoveApp(); err != nil || message != "moved" {
+		t.Fatalf("move: %q, %v", message, err)
+	}
+	if message, err := app.UninstallApp(); err != nil || message != "removed" {
+		t.Fatalf("uninstall: %q, %v", message, err)
 	}
 }

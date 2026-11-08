@@ -13,20 +13,25 @@ const shown = (backend: ReturnType<typeof fakeBackend>) => render(
 )
 
 describe('YouTubeSignIn', () => {
-  it('shows nothing where signing in is not offered', async () => {
+  it('names the button plainly and says what it does when nothing was signed in yet', async () => {
     const backend = fakeBackend()
     shown(backend)
-    await screen.findByText('', { selector: 'body' })
-    expect(screen.queryByText('Sign in to YouTube')).toBeNull()
+    expect(await screen.findByRole('button', { name: 'Sign in to YouTube…' })).toBeTruthy()
+    expect(screen.getByText(/With a Premium account the music downloads at a higher quality/)).toBeTruthy()
   })
 
-  it('shows the state and signs in on the button', async () => {
+  it('names the button after what the last sign-in came to', async () => {
     const backend = fakeBackend()
-    backend.answers.signInState = 'not signed in'
+    backend.answers.signInState = 'premium'
+    shown(backend)
+    expect(await screen.findByRole('button', { name: 'Sign in to YouTube… (signed in, Premium)' })).toBeTruthy()
+  })
+
+  it('signs in on the button and tells what came of it', async () => {
+    const backend = fakeBackend()
     backend.answers.signIn = 'Signed in to YouTube.'
     shown(backend)
-    expect(await screen.findByText('YouTube: not signed in')).toBeTruthy()
-    fireEvent.click(screen.getByText('Sign in to YouTube'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign in to YouTube…' }))
     expect(await screen.findByText('Signed in to YouTube.')).toBeTruthy()
     expect(backend.calls).toContain('signIn()')
   })

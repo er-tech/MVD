@@ -30,6 +30,8 @@ export interface FakeBackend extends Backend {
     updateNote:  string
     signInState: string
     signIn:      string
+    move:        string
+    uninstall:   string
     startupList: string
   }
   /** A message to reject the next call of the named method with, once. */
@@ -70,15 +72,27 @@ export function fakeBackend (): FakeBackend {
         betterAudio:     false,
         autoRetry:       true,
         checkForUpdates: true,
-        autoCookies:     false,
         createLogFile:   true,
+
+        logDir:              String.raw`C:\Music`,
+        mergeFormat:         'mp4',
+        retryCycles:         30,
+        retryWaitSeconds:    30,
+        concurrentFragments: 4,
+        startTimeoutSeconds: 50,
+        cookieSource:        'off',
       },
       options: {
         videoQualities: ['best', '1080p', '720p'],
         audioQualities: ['best', 'high', 'low'],
         officialVideos: ['yes', 'no', 'only'],
         minDownloads:   1,
-        maxDownloads:   16,
+        maxDownloads:   32,
+        mergeFormats:   ['mp4', 'mkv', 'webm'],
+        cookieSources:  ['off', 'firefox', 'chrome', 'all'],
+        canSignIn:      false,
+        canMove:        false,
+        canUninstall:   false,
       },
       tools:       { ready: true, message: '', failed: false },
       recovery:    null,
@@ -91,6 +105,8 @@ export function fakeBackend (): FakeBackend {
       updateNote:  '',
       signInState: '',
       signIn:      'Signed in.',
+      move:        'MVD was moved.',
+      uninstall:   'MVD is being removed.',
       startupList: '',
     },
     sendBatch: (batch: Batch) => batchListeners.forEach(listener => {
@@ -151,6 +167,8 @@ export function fakeBackend (): FakeBackend {
     updateNote:           () => answer('updateNote', [], () => fake.answers.updateNote),
     signInState:          () => answer('signInState', [], () => fake.answers.signInState),
     signIn:               () => answer('signIn', [], () => fake.answers.signIn),
+    moveApp:              () => answer('moveApp', [], () => fake.answers.move),
+    uninstallApp:         () => answer('uninstallApp', [], () => fake.answers.uninstall),
     startupList:          () => answer('startupList', [], () => fake.answers.startupList),
     onOpenFile:           (listener: (path: string) => void) => {
       openFileListeners.add(listener)

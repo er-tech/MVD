@@ -99,5 +99,3 @@ cwd = "."
 
 [agent]
 enabled = false
-
-[conventions.vertical-slices]

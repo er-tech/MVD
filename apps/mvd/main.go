@@ -315,6 +315,40 @@ func host(tools *deps.Preparation, checker *selfupdate.Checker, appDir, ytDlpPat
 		bridged.SignIn = func(wctx context.Context) (string, error) { return signin.Run(wctx, appDir, ytDlpPath, ytArgs) }
 		bridged.SignInState = func() string { return cookies.SignInState(appDir) }
 	}
+	// Moving is offered when the app runs from somewhere it could be moved out of, whatever was
+	// answered when it asked by itself.
+	if install.CanBeMoved(appDir, version) {
+		bridged.Move = func(wctx context.Context) (string, error) {
+			switch install.MoveNow(appDir, version) {
+			case install.Moved:
+				// The moved copy has started: this one ends once the answer is given.
+				go runtime.Quit(wctx)
+
+				return "MVD was moved to its own folder and starts again from there.", nil
+			case install.AlreadyThere:
+				return "MVD already lives in its own folder.", nil
+			case install.CannotMove:
+				return "", errors.New("MVD cannot be moved on this machine")
+			}
+
+			return "MVD was not moved.", nil
+		}
+	}
+	bridged.Uninstall = func(wctx context.Context) (string, error) {
+		remove, err := uninstall.Here(version, appDir, configPath(appDir), nil).Confirm(nil)
+		switch {
+		case errors.Is(err, uninstall.ErrDeclined):
+			return "MVD was not removed.", nil
+		case errors.Is(err, uninstall.ErrNoDialog):
+			return "", errors.New("there is no way to ask for confirmation on this machine, so nothing was removed")
+		case err != nil:
+			return "", err
+		}
+		// The removal ends with the app quitting, after the answer has been given.
+		go remove()
+
+		return "MVD is being removed.", nil
+	}
 
 	return bridged
 }

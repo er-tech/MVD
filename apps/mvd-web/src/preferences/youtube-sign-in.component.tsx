@@ -1,10 +1,12 @@
-import { Button, HStack, Text } from '@chakra-ui/react'
+import { Button, Stack, Text } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
 import type { Backend } from '../backend'
+import { fieldText, signInLabel } from './preference-fields.content.ts'
 
 /**
- * The line of the YouTube sign-in in Preferences: whether a login is kept and a button to sign in
- * inside the app. It shows nothing where the system does not offer signing in.
+ * The YouTube sign-in of Preferences: a button that opens the window to sign in, named after what the
+ * last sign-in came to, with the line that says what it does. The caller shows it only where the system
+ * offers signing in.
  *
  * @param props.backend - the Go side.
  */
@@ -18,11 +20,9 @@ export function YouTubeSignIn ({ backend }: { backend: Backend }) {
     const load = async () => {
       try {
         const value = await backend.signInState()
-        if (current) {
-          setState(value)
-        }
+        if (current) setState(value)
       } catch {
-        // Not offered here: the row stays hidden.
+        // No news of an earlier sign-in: the button keeps its plain name.
       }
     }
     void load()
@@ -31,10 +31,6 @@ export function YouTubeSignIn ({ backend }: { backend: Backend }) {
       current = false
     }
   }, [backend])
-
-  if (state === '') {
-    return null
-  }
 
   const signIn = async () => {
     setWorking(true)
@@ -49,9 +45,9 @@ export function YouTubeSignIn ({ backend }: { backend: Backend }) {
   }
 
   return (
-    <HStack justify='space-between' align='start'>
-      <Text fontSize='sm'>{message === '' ? `YouTube: ${state}` : message}</Text>
-      <Button size='sm' variant='outline' loading={working} onClick={() => void signIn()}>Sign in to YouTube</Button>
-    </HStack>
+    <Stack gap='1'>
+      <Button variant='outline' loading={working} onClick={() => void signIn()}>{signInLabel(state)}</Button>
+      <Text fontSize='xs' color='fg.muted'>{message === '' ? fieldText.signIn.hint : message}</Text>
+    </Stack>
   )
 }
