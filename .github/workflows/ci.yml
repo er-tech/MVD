@@ -35,7 +35,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   ci:
@@ -49,7 +49,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version: '1.27'
           check-latest: true
           cache: false
       - uses: actions/setup-node@v7
@@ -59,7 +59,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
-          key: smith-go-${{ runner.os }}-${{ hashFiles('apps/mvd/go.sum', 'libs/mvd-core/go.sum') }}
+          key: smith-go-${{ runner.os }}-${{ hashFiles('apps/mvd/go.sum', 'libs/mvd-core/go.sum', 'libs/mvd-state/go.sum') }}
           restore-keys: |
             smith-go-${{ runner.os }}-
       - name: Cache the npm download store
@@ -72,7 +72,7 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.28
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.57
           smith --version
       # smith:slot before-setup
       # smith:slot-end before-setup
@@ -123,7 +123,7 @@ jobs:
 
   native:
     needs: ci
-    if: ${{ always() && (needs.ci.result == 'success' || ((github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_bump != '')) && needs.ci.outputs.released == 'true')) }}
+    if: ${{ always() && ((github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_bump != '')) && github.ref_name == 'main' && needs.ci.outputs.released == 'true') }}
     strategy:
       fail-fast: false
       matrix:
@@ -135,7 +135,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version: '1.27'
           check-latest: true
           cache: false
       - uses: actions/setup-node@v7
@@ -144,7 +144,7 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.28
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.57
           smith --version
       - name: Setup
         run: smith ci setup
@@ -182,7 +182,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26'
+          go-version: '1.27'
           check-latest: true
           cache: false
       - uses: actions/setup-node@v7
@@ -191,7 +191,7 @@ jobs:
       - name: Install smith
         shell: bash
         run: |
-          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.28
+          npm install --global --registry https://registry.npmjs.org/ monosmith@2.0.0-beta.57
           smith --version
       - name: Install the Linux packages
         if: runner.os == 'Linux'

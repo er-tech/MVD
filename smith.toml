@@ -7,7 +7,7 @@ schema = 1
 name = "mvd"
 defaults = "2026.11"
 scope = "@mvd"
-allowed_outputs = ["apps/mvd/appwindow/web"]
+allowed_outputs = ["apps/mvd/frontend/dist"]
 shared_outputs = ["dist/drop"]
 
 [ci]
@@ -40,10 +40,10 @@ platforms = ["windows-x64", "macos-arm64", "linux-x64"]
 
 [projects.mvd.tasks.build]
 depends_on = ["stage-web"]
-env = { GOFLAGS = "-tags=production,gtk3" }  # Wails 3 builds for GTK 4 on Linux unless told gtk3
+env = { GOFLAGS = "-tags=desktop,production,webkit2_41" }  # Wails 2: the desktop shell, and WebKitGTK 4.1 on Linux
 
 [projects.mvd.tasks.build-native]
-command = ["node", "-e", "const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd/'+os+'-'+arch+'/mvd'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-tags','production'+(os==='linux'?',gtk3':''),'-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd',stdio:'inherit',env:{...process.env,CGO_ENABLED:'1'}});process.exit(r.status??1)"]
+command = ["node", "-e", "const{spawnSync}=require('node:child_process');const host=k=>spawnSync('go',['env',k],{encoding:'utf8'}).stdout.trim();const os=host('GOOS'),arch=host('GOARCH');const v=process.env.VERSION||'dev';const out='../../dist/platforms/mvd/'+os+'-'+arch+'/mvd'+(os==='windows'?'.exe':'');const r=spawnSync('go',['build','-trimpath','-tags','desktop,production'+(os==='linux'?',webkit2_41':''),'-ldflags','-s -w -X main.version='+v+(os==='windows'?' -H=windowsgui':''),'-o',out,'.'],{cwd:'apps/mvd',stdio:'inherit',env:{...process.env,CGO_ENABLED:os==='windows'?'0':'1'}});process.exit(r.status??1)"]
 cwd = "."
 depends_on = ["stage-web", "fetch-music-fixer"]
 inputs = ["**/*", "{workspaceRoot}/go.mod", "{workspaceRoot}/go.sum"]
@@ -54,7 +54,7 @@ command = ["node", "tools/fetch-music-fixer.cjs"]
 cwd = "."
 
 [projects.mvd.tasks.lint]
-command = ["golangci-lint", "run", "--build-tags", "production,gtk3", "--allow-serial-runners"]
+command = ["golangci-lint", "run", "--build-tags", "desktop,production,webkit2_41", "--allow-serial-runners"]
 depends_on = ["stage-web"]
 
 [projects.mvd.tasks.package-dmg]
@@ -71,22 +71,22 @@ depends_on = ["build-native"]
 outputs = ["../../dist/drop"]
 
 [projects.mvd.tasks.stage-web]
-command = ["node", "-e", "const fs=require('node:fs');fs.rmSync('apps/mvd/appwindow/web',{recursive:true,force:true});fs.cpSync('apps/mvd-web/dist','apps/mvd/appwindow/web',{recursive:true})"]
+command = ["node", "-e", "const fs=require('node:fs');const d='apps/mvd/frontend/dist';fs.mkdirSync(d,{recursive:true});fs.cpSync('dist/apps/mvd-web',d,{recursive:true});fs.writeFileSync(d+'/.gitkeep','')"]
 cwd = "."
 depends_on = ["mvd-web:build"]
-outputs = ["appwindow/web"]
+outputs = ["frontend/dist"]
 
 [projects.mvd.tasks.start]
-command = ["go", "run", "-tags", "production,gtk3", "."]
+command = ["go", "run", "-tags", "desktop,production,webkit2_41", "."]
 depends_on = ["stage-web"]
 
 [projects.mvd.tasks.test]
 depends_on = ["stage-web"]
-env = { GOFLAGS = "-tags=production,gtk3" }  # Wails 3 builds for GTK 4 on Linux unless told gtk3
+env = { GOFLAGS = "-tags=desktop,production,webkit2_41" }  # Wails 2: the desktop shell, and WebKitGTK 4.1 on Linux
 
 [projects.mvd.tasks.package]
 depends_on = ["stage-web"]
-env = { GOFLAGS = "-tags=production,gtk3" }  # Wails 3 builds for GTK 4 on Linux unless told gtk3
+env = { GOFLAGS = "-tags=desktop,production,webkit2_41" }  # Wails 2: the desktop shell, and WebKitGTK 4.1 on Linux
 
 [projects.mvd-core]
 root = "libs/mvd-core"
@@ -97,20 +97,7 @@ kind = "lib"
 command = ["go", "test", "-tags", "mvddebug", "./libs/mvd-core/..."]
 cwd = "."
 
-[projects.mvd-web.tasks.package]
-command = ["node", "-e", "const fs=require('node:fs');fs.mkdirSync('dist/drop/mvd-web',{recursive:true});const A=require('adm-zip');let z;z=new A();z.addLocalFolder('apps/mvd-web/dist-dev');z.writeZip('dist/drop/mvd-web/react-app-mvd-web-dev.zip');z=new A();z.addLocalFolder('apps/mvd-web/dist-uat');z.writeZip('dist/drop/mvd-web/react-app-mvd-web-uat.zip');z=new A();z.addLocalFolder('apps/mvd-web/dist-prod');z.writeZip('dist/drop/mvd-web/react-app-mvd-web-prod.zip')"]
-cwd = "."
-depends_on = ["build", "build-dev", "build-uat", "build-prod"]
-outputs = ["../../dist/drop/mvd-web"]
-
-[projects.mvd-web.tasks.preview]
-depends_on = ["build"]
-
-[projects.mvd-web.tasks.test]
-env = { TS_NODE_COMPILER_OPTIONS = "{\"moduleResolution\":\"node10\",\"module\":\"commonjs\",\"customConditions\":null}" }
-
-[projects.mvd-web.tasks.typecheck]
-depends_on = ["^build", "^typecheck"]
-
 [agent]
 enabled = false
+
+[conventions.vertical-slices]

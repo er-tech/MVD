@@ -32,6 +32,16 @@ func (e *Engine) Snapshot() []EntrySnapshot {
 		if p.Upload.ID == "" {
 			p.Upload.ID = en.info.VideoID
 		}
+		// A song the run has only listed has no full entry yet: the listing is all the file gets.
+		if p.Upload.Title == "" {
+			p.Upload.Title = en.info.Title
+		}
+		if p.Upload.Channel == "" {
+			p.Upload.Channel = en.info.Channel
+		}
+		if p.Upload.PlaylistIndex == 0 {
+			p.Upload.PlaylistIndex = en.info.Index
+		}
 		if en.named != nil {
 			p.Artist, p.Title = en.named.artist, en.named.title
 		}

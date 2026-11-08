@@ -1,32 +1,42 @@
-// MVD desktop app: a window of its own that shows the terminal interface (the same
-// screens as the terminal app), carried over the window's own events with no server or
-// port, and that takes new URLs while it downloads. Closing the window quits, and so does quitting from its screens. The libraries it uses are shared in libs/mvd-core; they share
-// libs/mvd-core.
+// MVD desktop app: a window of its own, drawn by a React page, that talks to this program through
+// the methods and events of Wails 2. Go owns the list and the downloads and tells the page only what
+// changed (see docs/architecture/rewrite-wails2.md). Closing the window quits.
 package main
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
+	goruntime "runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
-	"youtube-downloader/apps/mvd/appwindow"
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"github.com/er-tech/MVD/libs/mvd-state/library"
+	"youtube-downloader/apps/mvd/appmenu"
+	"youtube-downloader/apps/mvd/bridge"
+	"youtube-downloader/apps/mvd/childprocs"
 	"youtube-downloader/apps/mvd/console"
 	"youtube-downloader/apps/mvd/filetype"
-	"youtube-downloader/apps/mvd/folderdialog"
 	"youtube-downloader/apps/mvd/install"
 	"youtube-downloader/apps/mvd/notification"
 	"youtube-downloader/apps/mvd/openfolder"
+	"youtube-downloader/apps/mvd/preferences"
 	"youtube-downloader/apps/mvd/question"
+	"youtube-downloader/apps/mvd/runhost"
 	"youtube-downloader/apps/mvd/selfupdate"
 	"youtube-downloader/apps/mvd/signin"
-	"youtube-downloader/apps/mvd/terminalui"
 	"youtube-downloader/apps/mvd/toolupdates"
 	"youtube-downloader/apps/mvd/uninstall"
 	"youtube-downloader/libs/mvd-core/appdir"
@@ -35,13 +45,13 @@ import (
 	"youtube-downloader/libs/mvd-core/deps"
 	"youtube-downloader/libs/mvd-core/openurl"
 	"youtube-downloader/libs/mvd-core/playlistfile"
-	"youtube-downloader/libs/mvd-core/prefsform"
-	"youtube-downloader/libs/mvd-core/prefspopup"
-	"youtube-downloader/libs/mvd-core/tui"
-	"youtube-downloader/libs/mvd-core/workspace"
-	"youtube-downloader/libs/mvd-core/workspace/windowsnapshot"
 	"youtube-downloader/libs/mvd-core/ytdlp/fetch"
 )
+
+// frontend is the page, built by apps/mvd-web and copied here by the stage-web task.
+//
+//go:embed all:frontend/dist
+var frontend embed.FS
 
 var version = "dev"
 
@@ -56,7 +66,7 @@ func main() {
 	flag.Bool("no-tray", false, "no longer used (kept for older scripts)")
 	move := flag.Bool("move", false, "ask to move the app to its own folder now, whatever was answered before")
 	movedFrom := flag.String("moved-from", "", "set by the app itself after moving to its folder: the old copy to remove")
-	edit := flag.String("edit", "", "open the playlist editor on a playlist address or a saved .mvd file; a .mvd file given by itself does the same")
+	edit := flag.String("edit", "", "open a saved .mvd list; a .mvd file given by itself does the same")
 	afterExit := flag.Int(selfupdate.AfterExitFlag, 0, "set by the app itself after an update: wait for this process to end before opening")
 	removeApp := flag.Bool("uninstall", false, "remove MVD from this computer, after asking; Settings > Apps on Windows runs this")
 	signInDir := flag.String(signin.Flag, "", "set by the app itself: show the window to sign in to YouTube, with its profile in this folder")
@@ -91,18 +101,21 @@ func main() {
 		return
 	}
 
-	review := *edit
-	if review == "" && flag.NArg() == 1 && strings.EqualFold(filepath.Ext(flag.Arg(0)), playlistfile.Extension) {
-		review = flag.Arg(0)
+	list := *edit
+	if list == "" && flag.NArg() == 1 && strings.EqualFold(filepath.Ext(flag.Arg(0)), playlistfile.Extension) {
+		list = flag.Arg(0)
 	}
-	if err := run(*movedFrom, *move, review); err != nil {
+	if err := run(*movedFrom, *move, list); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		console.ShowFatal(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(movedFrom string, askToMove bool, review string) error {
+// configPath is the settings file, the same one the older windows used.
+func configPath(appDir string) string { return filepath.Join(appDir, "config.conf") }
+
+func run(movedFrom string, askToMove bool, startupList string) error {
 	logf := func(format string, a ...interface{}) { fmt.Printf(format+"\n", a...) }
 
 	appDir, err := appdir.Dir()
@@ -129,6 +142,16 @@ func run(movedFrom string, askToMove bool, review string) error {
 		go install.CleanUpMovedProgram(movedFrom)
 	}
 
+	// Whatever the engine starts, yt-dlp and ffmpeg, ends with the app, even when it is killed.
+	if err := childprocs.Contain(); err != nil {
+		logf("cannot contain the programs the app starts: %v", err)
+	}
+
+	prefs, err := preferences.Open(configPath(appDir), appDir, appdir.DefaultVideosDir())
+	if err != nil {
+		return fmt.Errorf("cannot read the settings: %w", err)
+	}
+
 	// The tools live in the app-data folder: the same place on every start, and one the
 	// person can always write to, whatever folder the app was started from.
 	notify := notification.Notify
@@ -140,76 +163,39 @@ func run(movedFrom string, askToMove bool, review string) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
+	sessionCtx, cancelSession := context.WithCancel(ctx)
+	defer cancelSession()
+
+	store := library.NewStore()
+	session := runhost.New(sessionCtx, store, runhost.RealBuild(ytDlpPath, logf), prefs.Config, filepath.Join(appDir, "unsaved-list.tmp"))
+
+	// The window's context, which the menu and the other threads need to reach the window.
+	var window atomic.Value
+	emit := func(event string, data ...any) {
+		if wctx, found := window.Load().(context.Context); found {
+			runtime.EventsEmit(wctx, event, data...)
+		}
+	}
 
 	// yt-dlp and ffmpeg are kept up to date: checked in the background at start, and again
 	// when a download fails, after which the failed downloads are tried again.
-	var terminalRuns *terminalui.Runs
 	checker := &selfupdate.Checker{
 		Dir: appDir, Version: version, Notify: notify, Ask: question.Ask, Open: openurl.Open, Logf: logf,
 		// The switch is in the preferences, read each time so a change counts at once.
-		Enabled: func() bool {
-			cfg, err := config.Load(terminalui.ConfigPath(appDir), appDir)
-			return err != nil || cfg.CheckForUpdates
-		},
+		Enabled: func() bool { return prefs.Config().CheckForUpdates },
+		// A newer version put in place asks the window to close, which asks the person if downloads run.
+		Quit: func() { emit("close-requested") },
 	}
 	updates := toolupdates.New(
 		func() []string {
 			return deps.UpdateIn(binDir, toolupdates.Reporter(logf, func(notification.Notice) {}))
 		},
-		func() int { return terminalRuns.RetryFailed() },
+		session.RetryFailed,
 		notify, logf, time.Now,
 	)
-	terminalRuns = terminalui.NewRuns(updates.AfterFailure)
+	session.OnFailure(updates.AfterFailure)
 
-	// The page around the terminal dims with a popup, and is told when one is open.
-	backdrop := &appwindow.Backdrop{}
-	// The window can be drawn in the classic systems' looks: the program says what it shows,
-	// and the page sends back what the person does.
-	classic := &appwindow.ClassicWindow{}
-	removal := uninstall.Here(version, appDir, terminalui.ConfigPath(appDir), stop)
-	// Moving is only offered while the app has not been moved yet.
-	var move tui.Mover
-	if install.CanBeMoved(appDir, version) {
-		move = terminalui.Move(func() install.MoveResult { return install.MoveNow(appDir, version) }, stop)
-	}
-	// The terminal-style interface: the same screens as the terminal app, in a window.
-	program := terminalui.Start(ctx, terminalui.NewModelFactory(appDir, terminalui.Files{
-		Config: terminalui.ConfigPath(appDir),
-		List:   filepath.Join(appDir, "list.txt"),
-		Review: review,
-	}, terminalui.Host{
-		Start:     terminalRuns.Start(ctx, ytDlpPath, logf),
-		StartList: terminalRuns.StartList(ctx, ytDlpPath, logf),
-		// The person is at this machine, so its own folder chooser is the one to show.
-		PickFolder: func(start string) (string, bool, error) { return folderdialog.Dialog{}.Pick(ctx, start) },
-		PickFile: func(start string) (string, bool, error) {
-			return folderdialog.Dialog{}.PickFile(ctx, start, "mvd", "MVD review")
-		},
-		SaveFile: func(dir, name string) (string, bool, error) {
-			return folderdialog.Dialog{}.SaveFile(ctx, dir, name, "mvd", "MVD review")
-		},
-		// Quitting from the screens ends the program that runs them, and the window would
-		// otherwise stay open on a page with nothing behind it.
-		Quit:      stop,
-		Version:   version,
-		Clipboard: terminalui.SystemClipboard{},
-
-		CheckForUpdate: func() string { return checker.CheckNow(ctx) },
-		UpdateNote:     checker.Note,
-		Modal:          backdrop.Set,
-		Style:          classic.SetStyle,
-		Window:         classic.Show,
-		// The preferences are a window the page draws, in every style.
-		Preferences: classic.ShowPreferences,
-		Tools:       toolsState(tools),
-		OpenFolder:  openfolder.Open,
-		Uninstall:   terminalui.Uninstall(removal),
-		// Moving later is possible whatever was answered when the app asked by itself.
-		Move: move,
-		// Signing in inside MVD is only done on Windows, where yt-dlp can read the window's cookies.
-		SignIn:      signInHost(ctx, appDir, ytDlpPath),
-		SignInState: func() string { return cookies.SignInState(appDir) },
-	}, logf)())
+	app := bridge.New(store, session, prefs, host(tools, checker, appDir, ytDlpPath, startupList, ctx), version, cancelSession)
 
 	// .mvd files are download lists of this program: they get its icon and open it. It is
 	// told at every start, so it follows the program when it moves.
@@ -228,27 +214,40 @@ func run(movedFrom string, askToMove bool, review string) error {
 	// A newer MVD is looked for once a day, in the background; the person is only told.
 	go checker.AtStart(ctx)
 
-	// The window runs on this goroutine (macOS needs the main thread) until it is closed,
-	// and closing it ends the app. A second start does not get past appwindow.Run: it
-	// raises the first window and ends.
-	classic.OnIntent = func(in windowsnapshot.Intent) { program.Send(workspace.WindowIntentMsg(in)) }
-	classic.OnPrefsIntent = func(in prefsform.WindowIntent) { program.Send(prefspopup.WindowIntentMsg(in)) }
-	checker.Quit = func() { program.Send(workspace.CloseRequestedMsg{}) }
-	err = appwindow.Run(ctx, appwindow.Options{
-		DataDir: appDir, Backdrop: backdrop, Classic: classic,
-		OnCloseRequest: func() { program.Send(workspace.CloseRequestedMsg{}) },
-		// A list double clicked while the app is open is opened in the window that is.
-		OnSecondStart: func(args []string) {
-			if list := filetype.ListInArgs(args); list != "" {
-				program.Send(workspace.OpenListMsg{Path: list})
-			}
+	// A list double clicked while the app is open is opened in the window that is.
+	openList := func(path string) {
+		if list := filetype.ListInArgs([]string{path}); list != "" {
+			emit("open-file", list)
+		}
+	}
+	err = wails.Run(&options.App{
+		Title:       "MVD",
+		Width:       1180,
+		Height:      760,
+		MinWidth:    760,
+		MinHeight:   480,
+		AssetServer: &assetserver.Options{Assets: frontend},
+		Menu:        appmenu.Build(func(action string) { menuAction(&window, action) }),
+		OnStartup: func(wctx context.Context) {
+			window.Store(wctx)
+			app.Startup(wctx)
+		},
+		OnBeforeClose: app.BeforeClose,
+		Bind:          []any{app},
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: "mvd-app-3b7c2f1e",
+			OnSecondInstanceLaunch: func(second options.SecondInstanceData) {
+				if wctx, found := window.Load().(context.Context); found {
+					runtime.WindowUnminimise(wctx)
+					runtime.Show(wctx)
+				}
+				for _, arg := range second.Args {
+					openList(arg)
+				}
+			},
 		},
 		// macOS hands a double clicked .mvd over this way instead of in the arguments.
-		OnFileOpen: func(path string) {
-			if list := filetype.ListInArgs([]string{path}); list != "" {
-				program.Send(workspace.OpenListMsg{Path: list})
-			}
-		},
+		Mac: &mac.Options{OnFileOpen: openList},
 	})
 	stop()
 	// An update put in place while the app ran opens as soon as the app has closed.
@@ -261,15 +260,71 @@ func run(movedFrom string, askToMove bool, review string) error {
 	return err
 }
 
-// runUninstall removes the app: this process asks the person and removes it, and nothing
-// happens unless they say yes. A copy that is running keeps running until it is closed;
-// removing the program moves it aside, which Windows allows while it runs.
+// menuAction sends a menu choice to the page, or quits for Quit.
+func menuAction(window *atomic.Value, action string) {
+	wctx, found := window.Load().(context.Context)
+	switch {
+	case !found:
+	case action == "quit":
+		runtime.Quit(wctx)
+	default:
+		runtime.EventsEmit(wctx, "menu", action)
+	}
+}
+
+// host is what the app asks of the window and of the system, answered by the Wails runtime and by
+// the platform packages of the app.
+func host(tools *deps.Preparation, checker *selfupdate.Checker, appDir, ytDlpPath, startupList string, ctx context.Context) bridge.Host {
+	listFilter := []runtime.FileFilter{{DisplayName: "MVD lists (*.mvd)", Pattern: "*.mvd"}}
+	bridged := bridge.Host{
+		Emit: func(wctx context.Context, batch library.Batch) {
+			runtime.EventsEmit(wctx, bridge.RowsEvent, batch)
+		},
+		PickListFile: func(wctx context.Context) (string, error) {
+			return runtime.OpenFileDialog(wctx, runtime.OpenDialogOptions{Title: "Open a list", Filters: listFilter})
+		},
+		PickSaveFile: func(wctx context.Context, name string) (string, error) {
+			return runtime.SaveFileDialog(wctx, runtime.SaveDialogOptions{Title: "Save the list", DefaultFilename: name, Filters: listFilter})
+		},
+		PickFolder: func(wctx context.Context, start string) (string, error) {
+			return runtime.OpenDirectoryDialog(wctx, runtime.OpenDialogOptions{Title: "Folder for the songs", DefaultDirectory: start})
+		},
+		OpenLink:   runtime.BrowserOpenURL,
+		OpenFolder: openfolder.Open,
+		Quit:       runtime.Quit,
+		AskClose: func(wctx context.Context) {
+			runtime.EventsEmit(wctx, "close-requested")
+		},
+		CheckForUpdate: func() string { return checker.CheckNow(ctx) },
+		UpdateNote:     checker.Note,
+		StartupList:    startupList,
+		Tools: func() bridge.Tools {
+			if problem := tools.Problem(); problem != "" {
+				return bridge.Tools{Message: problem, Failed: true}
+			}
+			if tools.Ready() {
+				return bridge.Tools{Ready: true}
+			}
+
+			return bridge.Tools{Message: tools.Status()}
+		},
+	}
+	// Signing in inside MVD is only done on Windows, where yt-dlp can read the window's cookies.
+	if goruntime.GOOS == "windows" {
+		ytArgs := fetch.NormalizeArgs(config.Default(appDir, "").ExtraArgs)
+		bridged.SignIn = func(wctx context.Context) (string, error) { return signin.Run(wctx, appDir, ytDlpPath, ytArgs) }
+		bridged.SignInState = func() string { return cookies.SignInState(appDir) }
+	}
+
+	return bridged
+}
+
 func runUninstall() error {
 	appDir, err := appdir.Dir()
 	if err != nil {
 		return fmt.Errorf("cannot open the app data folder: %w", err)
 	}
-	remove, err := uninstall.Here(version, appDir, terminalui.ConfigPath(appDir), nil).Confirm(nil)
+	remove, err := uninstall.Here(version, appDir, configPath(appDir), nil).Confirm(nil)
 	switch {
 	case errors.Is(err, uninstall.ErrDeclined):
 		return nil
@@ -281,30 +336,4 @@ func runUninstall() error {
 	remove()
 
 	return nil
-}
-
-// toolsState is what the workspace asks about the tools: ready, being fetched, or one that
-// could not be had.
-func toolsState(tools *deps.Preparation) func() workspace.ToolsState {
-	return func() workspace.ToolsState {
-		if problem := tools.Problem(); problem != "" {
-			return workspace.ToolsState{Message: problem, Failed: true}
-		}
-		if tools.Ready() {
-			return workspace.ToolsState{Ready: true}
-		}
-
-		return workspace.ToolsState{Message: tools.Status()}
-	}
-}
-
-// signInHost is what the preferences call to sign in to YouTube inside MVD, or nil where that is
-// not offered.
-func signInHost(ctx context.Context, appDir, ytDlpPath string) func() (string, error) {
-	if runtime.GOOS != "windows" {
-		return nil
-	}
-	ytArgs := fetch.NormalizeArgs(config.Default(appDir, "").ExtraArgs)
-
-	return func() (string, error) { return signin.Run(ctx, appDir, ytDlpPath, ytArgs) }
 }

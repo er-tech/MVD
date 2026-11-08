@@ -4,7 +4,7 @@ import monosmith from '@monosmith/eslint-config'
 export default [
   ...monosmith({
     workspaceRoot: import.meta.dirname,
-    verticalSlices: { files: ['apps/mvd-web/src/**/*.{ts,tsx}'], roles: ['hook', 'content'] },
+    verticalSlices: { files: ['apps/mvd-web/src/**/*.{ts,tsx}'], roles: ['hook', 'content', 'mock'] },
   }),
   {
     // A yt-dlp metadata dump saved as UTF-16 by PowerShell: ESLint cannot parse it as JSON.
@@ -13,29 +13,14 @@ export default [
     ignores: ['test_meta.json'],
   },
   {
-    // The classic themes set their tokens (custom properties) on :root[data-theme=...] in
-    // apps/mvd-web/src/classic-themes; the components' stylesheets in other files read them, so
-    // the linter cannot see where they are defined.
-    name:  'local/classic-theme-tokens',
-    files: [
-      'apps/mvd-web/src/classic-*/**/*.css',
-      'apps/mvd-web/src/add-music-window/**/*.css',
-      'apps/mvd-web/src/theme-preview/**/*.css',
-      'apps/mvd-web/src/classic-app/**/*.css',
-      'apps/mvd-web/src/preferences-window/**/*.css',
-    ],
-    rules: {
-      'css/no-invalid-properties': ['error', { allowUnknownVariables: true }],
-    },
-  },
-  {
     ignores: [
       '**/vite.config.*.timestamp*',
     ],
   },
   {
-    // The React build that stage-web copies in for go:embed. Generated, and git-ignored.
-    name:    'local/staged-web-build',
-    ignores: ['apps/mvd/localserver/web/**'],
+    // The page built by apps/mvd-web and copied in for go:embed, and the bindings `wails build`
+    // writes for the page. Both are generated and git-ignored.
+    name:    'local/generated-web',
+    ignores: ['apps/mvd/frontend/dist/**', 'apps/mvd-web/src/wailsjs/**'],
   },
 ]

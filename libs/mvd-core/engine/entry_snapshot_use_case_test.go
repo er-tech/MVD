@@ -5,6 +5,22 @@ import (
 	"testing"
 )
 
+func TestSnapshotOfAListedSongKeepsWhatTheListingSaid(t *testing.T) {
+	eng := stubEngine(t, true, "https://youtube.com/playlist?list=A")
+	eng.entries = append(eng.entries, &engineEntry{
+		info:  EntryInfo{ID: 0, Playlist: 0, Index: 5, VideoID: "vid", Title: "Some Song", Channel: "Some Channel"},
+		state: StateQueued,
+	})
+	snap := eng.Snapshot()
+	if len(snap) != 1 {
+		t.Fatalf("snapshot %+v", snap)
+	}
+	up := snap[0].Upload
+	if up.ID != "vid" || up.Title != "Some Song" || up.Channel != "Some Channel" || up.PlaylistIndex != 5 {
+		t.Errorf("upload %+v: the file would lose the name of the song", up)
+	}
+}
+
 func TestSnapshotNamesEverySongWithItsVersionAndState(t *testing.T) {
 	eng := stubEngine(t, true, "https://youtube.com/playlist?list=A")
 	eng.opts.HoldForReview = true
