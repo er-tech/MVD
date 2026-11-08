@@ -6,25 +6,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/er-tech/MVD/libs/mvd-state/songrows"
+	"github.com/er-tech/MVD/libs/mvd-state/library"
 )
 
 type batches struct {
 	mu   sync.Mutex
-	list []songrows.Batch
+	list []library.Batch
 }
 
-func (b *batches) add(x songrows.Batch) { b.mu.Lock(); b.list = append(b.list, x); b.mu.Unlock() }
-func (b *batches) all() []songrows.Batch {
+func (b *batches) add(x library.Batch) { b.mu.Lock(); b.list = append(b.list, x); b.mu.Unlock() }
+func (b *batches) all() []library.Batch {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	return append([]songrows.Batch(nil), b.list...)
+	return append([]library.Batch(nil), b.list...)
 }
 
 func TestAnIdleStoreEmitsNothing(t *testing.T) {
 	var got batches
 	ctx, cancel := context.WithCancel(context.Background())
-	go Run(ctx, songrows.NewStore(), 5*time.Millisecond, got.add)
+	go Run(ctx, library.NewStore(), 5*time.Millisecond, got.add)
 	time.Sleep(60 * time.Millisecond)
 	cancel()
 	if n := len(got.all()); n != 0 {
@@ -34,16 +34,16 @@ func TestAnIdleStoreEmitsNothing(t *testing.T) {
 
 func TestAFloodOfChangesBecomesOneBatchWithTheNewestValue(t *testing.T) {
 	var got batches
-	store := songrows.NewStore()
+	store := library.NewStore()
 	for p := 0; p < 1000; p++ {
-		store.Set(songrows.Row{ID: "a", Percent: p})
+		store.SetSong(library.Song{ID: "a", Percent: p})
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go Run(ctx, store, 30*time.Millisecond, got.add)
 	time.Sleep(90 * time.Millisecond)
 	cancel()
 	all := got.all()
-	if len(all) != 1 || len(all[0].Upserts) != 1 || all[0].Upserts[0].Percent != 999 {
+	if len(all) != 1 || len(all[0].Songs.Upserts) != 1 || all[0].Songs.Upserts[0].Percent != 999 {
 		t.Fatalf("batches %+v, want one with percent 999", all)
 	}
 }
@@ -52,7 +52,7 @@ func TestRunStopsWhenTheContextEnds(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	stopped := make(chan struct{})
 	go func() {
-		Run(ctx, songrows.NewStore(), time.Hour, func(songrows.Batch) {})
+		Run(ctx, library.NewStore(), time.Hour, func(library.Batch) {})
 		close(stopped)
 	}()
 	cancel()

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/er-tech/MVD/libs/mvd-state/songrows"
+	"github.com/er-tech/MVD/libs/mvd-state/library"
 )
 
 // Run drains the store every period and calls emit with each batch, until ctx ends. A period with
@@ -14,7 +14,7 @@ import (
 //
 // store is the rows to watch, every is the time between two drains and must be above zero, and emit
 // receives each batch in order. Run returns when ctx ends.
-func Run(ctx context.Context, store *songrows.Store, every time.Duration, emit func(songrows.Batch)) {
+func Run(ctx context.Context, store *library.Store, every time.Duration, emit func(library.Batch)) {
 	tick := time.NewTicker(every)
 	defer tick.Stop()
 	for {

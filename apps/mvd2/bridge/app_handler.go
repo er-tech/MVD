@@ -7,75 +7,119 @@ import (
 	"sync"
 	"time"
 
-	"github.com/er-tech/MVD/apps/mvd2/childprocs"
-	"github.com/er-tech/MVD/apps/mvd2/simulation"
+	"github.com/er-tech/MVD/apps/mvd2/preferences"
+	"github.com/er-tech/MVD/apps/mvd2/runhost"
 	"github.com/er-tech/MVD/libs/mvd-state/changefeed"
-	"github.com/er-tech/MVD/libs/mvd-state/songrows"
+	"github.com/er-tech/MVD/libs/mvd-state/library"
 )
 
-// RowsEvent is the name of the event that carries a songrows.Batch to the page.
+// RowsEvent is the name of the event that carries a library.Batch to the page.
 const RowsEvent = "rows"
 
 const (
-	flushEvery   = 100 * time.Millisecond
-	stopTimeout  = 2 * time.Second
-	prototypeLen = 5000
+	flushEvery  = 100 * time.Millisecond
+	stopTimeout = 2 * time.Second
 )
 
-// App is what Wails binds: its exported methods are what the page can call.
+// Host is what the app asks of the operating system and of the window. The shell fills it with the
+// Wails runtime, so this package never imports it and a test fills it with fakes. A nil function
+// does nothing, or says "not offered".
+type Host struct {
+	// Emit sends a batch of changes to the page, with the context Startup received.
+	Emit func(context.Context, library.Batch)
+	// PickListFile asks for a .mvd file to open, and returns "" when the person cancels.
+	PickListFile func(context.Context) (string, error)
+	// PickSaveFile asks where to save a .mvd file, starting with the file name name, and returns ""
+	// when the person cancels.
+	PickSaveFile func(ctx context.Context, name string) (string, error)
+	// PickFolder asks for a folder, starting in start, and returns "" when the person cancels.
+	PickFolder func(ctx context.Context, start string) (string, error)
+	// OpenLink opens an address in the browser.
+	OpenLink func(ctx context.Context, url string)
+	// OpenFolder shows a folder in the file manager.
+	OpenFolder func(path string) error
+	// Quit closes the window.
+	Quit func(context.Context)
+	// Tools says whether the download tools are ready. Nil means they always are.
+	Tools func() Tools
+}
+
+// App is what Wails binds: its exported methods are what the page can call. It holds no logic of its
+// own: each method hands the work to the session, the preferences or the host, and returns at once.
 type App struct {
-	store *songrows.Store
-	procs childprocs.Group
-	emit  func(context.Context, songrows.Batch)
+	store   *library.Store
+	session *runhost.Session
+	prefs   *preferences.Store
+	host    Host
+	version string
+	cancel  context.CancelFunc
 
-	mu     sync.Mutex
-	cancel context.CancelFunc
-	log    *os.File
+	mu       sync.Mutex
+	ctx      context.Context
+	stopFeed context.CancelFunc
+	log      *os.File
 }
 
-// New returns an App with no rows. Wails calls Startup when the window is ready.
+// New returns an App for the session, which writes to the store the app reads.
 //
-// emit sends a batch of changes to the page, with the context Startup received. The shell passes the
-// Wails runtime here, so this package never imports it and a test can pass a recorder.
-func New(emit func(context.Context, songrows.Batch)) *App {
-	return &App{store: songrows.NewStore(), emit: emit}
+// store is the list the page shows, session fills it, prefs holds the settings, host reaches the
+// system and cancel ends the session's context. version is the version of the app, for the About
+// window.
+func New(store *library.Store, session *runhost.Session, prefs *preferences.Store, host Host, version string, cancel context.CancelFunc) *App {
+	return &App{store: store, session: session, prefs: prefs, host: host, version: version, cancel: cancel}
 }
 
-// Startup starts the prototype load and the change feed that tells the page about it. Wails calls it
-// once, with the context the runtime functions need.
+// Startup starts the change feed that tells the page what changed. Wails calls it once, with the
+// context the runtime functions need.
 func (a *App) Startup(ctx context.Context) {
-	run, cancel := context.WithCancel(ctx)
 	a.mu.Lock()
-	a.cancel = cancel
+	a.ctx = ctx
 	if path := os.Getenv("MVD2_LOG"); path != "" {
 		a.log, _ = os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	}
 	a.mu.Unlock()
-	go simulation.Churn(run, a.store, prototypeLen, 500, 50*time.Millisecond)
-	go changefeed.Run(run, a.store, flushEvery, func(batch songrows.Batch) {
-		a.emit(ctx, batch)
+	feed, stop := context.WithCancel(ctx)
+	a.mu.Lock()
+	a.stopFeed = stop
+	a.mu.Unlock()
+	go changefeed.Run(feed, a.store, flushEvery, func(batch library.Batch) {
+		if a.host.Emit != nil {
+			a.host.Emit(ctx, batch)
+		}
 	})
 }
 
-// BeforeClose stops the load and every child program, within two seconds, and lets the window close.
-// Wails calls it when the user closes the window. It reports the time it took when MVD2_LOG is set.
+// BeforeClose ends the session, waits up to two seconds for the engine to stop its programs, and
+// lets the window close. Wails calls it when the person closes the window. It reports the time it
+// took when MVD2_LOG is set.
 func (a *App) BeforeClose(context.Context) (prevent bool) {
 	started := time.Now()
 	a.mu.Lock()
-	cancel := a.cancel
+	stopFeed := a.stopFeed
 	a.mu.Unlock()
-	if cancel != nil {
-		cancel()
+	if stopFeed != nil {
+		stopFeed()
 	}
-	left := a.procs.Stop(stopTimeout)
+	a.cancel()
+	stopped := a.session.Wait(stopTimeout)
+	left := 0
+	if !stopped {
+		left = 1
+	}
 	a.write("close", float64(time.Since(started).Milliseconds()), left)
+
 	return false
 }
 
-// GetState returns all the rows and their revision. The page calls it when it starts and when it
-// finds that it missed a batch.
-func (a *App) GetState() songrows.State {
+// GetState returns every source and song and the revision they are at. The page calls it when it
+// starts and when it finds that it missed a batch.
+func (a *App) GetState() library.State {
 	return a.store.State()
+}
+
+// Version is the version of the app.
+func (a *App) Version() string {
+	return a.version
 }
 
 // Metric records a measure the page took, in the file MVD2_LOG names. It does nothing when the
@@ -93,4 +137,15 @@ func (a *App) write(name string, value float64, extra int) {
 		return
 	}
 	_, _ = fmt.Fprintf(a.log, "%s %s %.1f %d\n", time.Now().Format("15:04:05.000"), name, value, extra)
+}
+
+// context is the context of the window, or the background one before Startup.
+func (a *App) context() context.Context {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.ctx == nil {
+		return context.Background()
+	}
+
+	return a.ctx
 }
