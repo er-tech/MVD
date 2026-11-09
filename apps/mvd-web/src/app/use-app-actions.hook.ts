@@ -17,6 +17,8 @@ interface AppActions {
   notify:    (message: string) => void
   /** What the Paste item of the menu does. */
   paste:     () => Promise<void>
+  /** Copy the chosen source or song. */
+  copyItem:  () => void
 }
 
 /** True when a key press is the shortcut written as `Ctrl+Shift+S`, `F1` and the like. */
@@ -39,8 +41,9 @@ function matches (event: KeyboardEvent, keys: string): boolean {
  * @param actions.open - opens a window of the page.
  * @param actions.notify - shows a message.
  * @param actions.paste - pastes for the Paste item of the menu.
+ * @param actions.copyItem - copies the chosen item, for the Copy item of the menu when no text is selected.
  */
-export function useAppActions ({ backend, run, open, notify, modalOpen, paste }: AppActions): void {
+export function useAppActions ({ backend, run, open, notify, modalOpen, paste, copyItem }: AppActions): void {
   const perform = useCallback((action: MenuAction): void => {
     const ask = async (command: () => Promise<unknown>): Promise<void> => {
       try {
@@ -63,14 +66,21 @@ export function useAppActions ({ backend, run, open, notify, modalOpen, paste }:
       case 'pause-resume': { void ask(run.paused ? backend.resume : backend.pause); break }
       case 'undo':
       case 'redo':
-      case 'cut':
-      case 'copy': { document.execCommand(action); break }
+      case 'cut': { document.execCommand(action); break }
+      case 'copy': {
+        if (globalThis.getSelection()?.toString() === '') {
+          copyItem()
+        } else {
+          document.execCommand('copy')
+        }
+        break
+      }
       case 'paste': { void ask(paste); break }
       case 'retry-failed': { void ask(backend.retryFailed); break }
       case 'quit': { void ask(backend.quit); break }
       case 'open-folder': { void ask(backend.openOutputFolder); break }
     }
-  }, [backend, run.paused, run.started, open, notify, paste])
+  }, [backend, run.paused, run.started, open, notify, paste, copyItem])
 
   useEffect(() => backend.onMenu(perform), [backend, perform])
 

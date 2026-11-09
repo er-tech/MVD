@@ -1,6 +1,6 @@
 import { Button, Kbd, Table } from '@chakra-ui/react'
 import { ModalFrame } from '../modalframe'
-import { shortcutList } from './shortcut-list.content.ts'
+import { itemShortcutList, shortcutList } from './shortcut-list.content.ts'
 
 /** The props of {@link ShortcutsModal}. */
 export interface ShortcutsModalProps {
@@ -23,6 +23,12 @@ export function ShortcutsModal ({ open, onClose }: ShortcutsModalProps) {
         <Table.Body>
           {shortcutList.map(shortcut => (
             <Table.Row key={shortcut.action}>
+              <Table.Cell>{shortcut.label}</Table.Cell>
+              <Table.Cell textAlign='end'><Kbd>{shortcut.keys}</Kbd></Table.Cell>
+            </Table.Row>
+          ))}
+          {itemShortcutList.map(shortcut => (
+            <Table.Row key={shortcut.keys}>
               <Table.Cell>{shortcut.label}</Table.Cell>
               <Table.Cell textAlign='end'><Kbd>{shortcut.keys}</Kbd></Table.Cell>
             </Table.Row>

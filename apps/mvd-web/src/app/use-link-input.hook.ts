@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { sourceLinks, textOf } from '../addsource'
 import type { Backend } from '../backend'
+import { isField } from './editable-target.algorithm.ts'
 
 interface LinkInput {
   backend: Backend
@@ -8,11 +9,6 @@ interface LinkInput {
   enabled: boolean
   /** Shows a message from a command that Go refused. */
   notify:  (message: string) => void
-}
-
-/** True for an element the person types in, which keeps its own paste. */
-function isField (target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select') !== null)
 }
 
 const isListFile = (path: string): boolean => path.toLowerCase().endsWith('.mvd')

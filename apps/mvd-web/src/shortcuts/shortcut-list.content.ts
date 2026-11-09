@@ -10,6 +10,14 @@ export interface Shortcut {
   action: MenuAction
 }
 
+/** The keys of the chosen source or song, shown in the shortcuts window and the right-click menus. The page handles them where the person is not typing. */
+export const itemShortcutList: readonly { keys: string, label: string }[] = [
+  { keys: 'Ctrl+C', label: 'Copy the link of the chosen source or song' },
+  { keys: 'Enter', label: 'Open the link of the chosen source or song' },
+  { keys: 'Delete', label: 'Remove the chosen source' },
+  { keys: '↑ ↓', label: 'Choose the song above or below' },
+]
+
 /**
  * Every keyboard shortcut of the app. The shell reads it to handle keys, the shortcuts modal shows it, and
  * the native menu (apps/mvd/appmenu) writes the same keys beside its items. Cut, copy, paste and undo are
