@@ -15,9 +15,11 @@ import { ShortcutsModal } from '../shortcuts'
 import { SongTable } from '../songtable'
 import { SourceList } from '../sourcelist'
 import { StatusBar } from '../statusbar'
+import { useTheme } from '../theme'
 import { Toolbar } from '../toolbar'
 import { useAppActions } from './use-app-actions.hook.ts'
 import type { ModalName } from './use-app-actions.hook.ts'
+import { DropOverlay } from './drop-overlay.component.tsx'
 import { useLinkInput } from './use-link-input.hook.ts'
 import { useTools } from './use-tools.hook.ts'
 
@@ -31,6 +33,7 @@ import { useTools } from './use-tools.hook.ts'
 export function App ({ backend }: { backend: Backend }) {
   const [store] = useState(() => new LibraryStore())
   const run = useSyncExternalStore(store.subscribeRun, store.getRun)
+  useTheme()
   const tools = useTools(backend)
   const metrics = usePageMetrics(backend)
   const [selection, setSelection] = useState<Selection | undefined>()
@@ -86,7 +89,7 @@ export function App ({ backend }: { backend: Backend }) {
     setModal(undefined)
   }, [])
   const modalOpen = modal !== undefined || recovery !== undefined
-  const { paste } = useLinkInput({ backend, enabled: !modalOpen, notify: setNotice })
+  const { paste, hovering } = useLinkInput({ backend, enabled: !modalOpen, notify: setNotice })
   useAppActions({ backend, run, open: setModal, notify: setNotice, modalOpen, paste })
 
   const selectSource = useCallback((id: string) => {
@@ -156,6 +159,7 @@ export function App ({ backend }: { backend: Backend }) {
           <MetricsBar metrics={metrics} />
         </StatusBar>
       </Flex>
+      {hovering && <DropOverlay />}
       <AddSourceModal open={modal === 'add'} backend={backend} onClose={closeModal} />
       <PreferencesModal open={modal === 'preferences'} backend={backend} onClose={closeModal} />
       <AboutModal open={modal === 'about'} backend={backend} onClose={closeModal} />

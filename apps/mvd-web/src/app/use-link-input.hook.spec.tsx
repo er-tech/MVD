@@ -93,3 +93,33 @@ describe('useLinkInput', () => {
     fireEvent.click(screen.getByLabelText('field'))
   })
 })
+
+const drag = (type: string, types: string[]) => {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.defineProperties(event, {
+    dataTransfer:  { value: { types, getData: () => '' } },
+    relatedTarget: { value: null },
+  })
+  dispatchEvent(event)
+}
+
+function Probe ({ backend }: { backend: ReturnType<typeof fakeBackend> }) {
+  const { hovering } = useLinkInput({ backend, enabled: true, notify: () => undefined })
+
+  return <p>{hovering ? 'over' : 'away'}</p>
+}
+
+describe('useLinkInput hovering', () => {
+  it('is true while a file or a link is over the window, and false after it leaves or drops', async () => {
+    render(<Probe backend={fakeBackend()} />)
+    expect(screen.getByText('away')).toBeTruthy()
+    drag('dragover', ['text/uri-list'])
+    await screen.findByText('over')
+    drag('dragleave', ['text/uri-list'])
+    await screen.findByText('away')
+    drag('dragover', ['Files'])
+    await screen.findByText('over')
+    drag('drop', ['Files'])
+    await screen.findByText('away')
+  })
+})

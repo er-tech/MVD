@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { sourceLinks, textOf } from '../addsource'
 import type { Backend } from '../backend'
 
@@ -25,8 +25,10 @@ const isListFile = (path: string): boolean => path.toLowerCase().endsWith('.mvd'
  * @param input.enabled - whether the page takes the input, which is not so while a window is open.
  * @param input.notify - shows a message.
  * @returns `paste`, which does what the Paste item of the menu asks: it pastes into the field in focus, or adds the links.
+ * `hovering` is true while a file or a link is dragged over the window, so the page can say where to drop it.
  */
-export function useLinkInput ({ backend, enabled, notify }: LinkInput): { paste: () => Promise<void> } {
+export function useLinkInput ({ backend, enabled, notify }: LinkInput): { paste: () => Promise<void>, hovering: boolean } {
+  const [hovering, setHovering] = useState(false)
   const addLinks = useCallback(async (text: string): Promise<boolean> => {
     const links = sourceLinks(text)
     if (links.length === 0) {
@@ -65,12 +67,23 @@ export function useLinkInput ({ backend, enabled, notify }: LinkInput): { paste:
 
       return types.includes('text/uri-list') || types.includes('text/plain')
     }
+    const carriesFiles = (event: DragEvent): boolean => event.dataTransfer?.types.includes('Files') ?? false
     const onDragOver = (event: DragEvent): void => {
       if (carriesText(event)) {
         event.preventDefault()
       }
+      if (carriesText(event) || carriesFiles(event)) {
+        setHovering(true)
+      }
+    }
+    // A leave with no element to go to means the drag left the window.
+    const onDragLeave = (event: DragEvent): void => {
+      if (event.relatedTarget === null) {
+        setHovering(false)
+      }
     }
     const onDrop = (event: DragEvent): void => {
+      setHovering(false)
       if (!carriesText(event) || event.dataTransfer === null) {
         return
       }
@@ -85,9 +98,14 @@ export function useLinkInput ({ backend, enabled, notify }: LinkInput): { paste:
     }
     globalThis.addEventListener('paste', onPaste)
     globalThis.addEventListener('dragover', onDragOver)
+    globalThis.addEventListener('dragleave', onDragLeave)
+    globalThis.addEventListener('dragend', onDragLeave)
     globalThis.addEventListener('drop', onDrop)
 
     return () => {
+      setHovering(false)
+      globalThis.removeEventListener('dragleave', onDragLeave)
+      globalThis.removeEventListener('dragend', onDragLeave)
       globalThis.removeEventListener('paste', onPaste)
       globalThis.removeEventListener('dragover', onDragOver)
       globalThis.removeEventListener('drop', onDrop)
@@ -123,5 +141,5 @@ export function useLinkInput ({ backend, enabled, notify }: LinkInput): { paste:
     }
   }, [addLinks, notify])
 
-  return { paste }
+  return { paste, hovering }
 }
