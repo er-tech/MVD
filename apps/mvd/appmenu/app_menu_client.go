@@ -37,6 +37,8 @@ func Build(ask func(action string)) *menu.Menu {
 	item(file, "Save list", "Ctrl+S", "save-list")
 	item(file, "Save list as…", "Ctrl+Shift+S", "save-list-as")
 	file.AddSeparator()
+	item(file, "Open the songs folder", "Ctrl+E", "open-folder")
+	file.AddSeparator()
 	item(file, "Preferences…", "Ctrl+,", "preferences")
 	if runtime.GOOS != "darwin" {
 		file.AddSeparator()
@@ -44,7 +46,10 @@ func Build(ask func(action string)) *menu.Menu {
 	}
 
 	if runtime.GOOS == "darwin" {
-		root.Append(menu.EditMenu())
+		edit := menu.EditMenu()
+		edit.SubMenu.AddSeparator()
+		item(edit.SubMenu, "Search songs", "Ctrl+F", "search-songs")
+		root.Append(edit)
 	} else {
 		// The keys of these four work in the page's fields by themselves; the items do the same for a click.
 		edit := root.AddSubmenu("Edit")
@@ -54,14 +59,14 @@ func Build(ask func(action string)) *menu.Menu {
 		item(edit, "Cut", "Ctrl+X", "cut")
 		item(edit, "Copy", "Ctrl+C", "copy")
 		item(edit, "Paste", "Ctrl+V", "paste")
+		edit.AddSeparator()
+		item(edit, "Search songs", "Ctrl+F", "search-songs")
 	}
 
 	run := root.AddSubmenu("Run")
 	item(run, "Start", "Ctrl+Enter", "start")
 	item(run, "Pause or resume", "Ctrl+Enter", "pause-resume")
 	item(run, "Retry failed songs", "Ctrl+R", "retry-failed")
-	run.AddSeparator()
-	item(run, "Open the songs folder", "Ctrl+E", "open-folder")
 
 	help := root.AddSubmenu("Help")
 	item(help, "Keyboard shortcuts", "Ctrl+K", "shortcuts")

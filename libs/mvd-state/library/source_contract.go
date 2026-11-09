@@ -5,6 +5,8 @@ package library
 type Source struct {
 	ID  string `json:"id"`
 	URL string `json:"url"`
+	// Position is the place of the source in the list, from 1. The store sets it: a writer leaves it 0.
+	Position int `json:"position"`
 	// Title is the name of the playlist once it is listed, the URL until then.
 	Title string `json:"title"`
 	// Status is "listing", "listed" or "failed".
@@ -15,4 +17,6 @@ type Source struct {
 	Songs  int `json:"songs"`
 	Done   int `json:"done"`
 	Failed int `json:"failed"`
+	// Finding is how many songs of the source are being looked up now, for a spinner.
+	Finding int `json:"finding"`
 }

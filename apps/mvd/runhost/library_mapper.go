@@ -59,6 +59,8 @@ func versionOf(en *runstate.Entry) string {
 		return "official"
 	case en.Better:
 		return "better"
+	case songlist.Unavailable(en):
+		return ""
 	case en.State == engine.StatePlanned || en.State == engine.StateAccepted || en.State == engine.StateDownloading ||
 		en.State == engine.StateMerging || en.State == engine.StateDone:
 		return "original"
@@ -104,15 +106,28 @@ func sourceRow(st *runstate.State, pl *runstate.Playlist) library.Source {
 	}
 
 	return library.Source{
-		ID:     sourceID(pl.Index),
-		URL:    pl.URL,
-		Title:  titleOf(st, pl),
-		Status: status,
-		Error:  runstate.PlainError(pl.Err),
-		Songs:  len(pl.Entries),
-		Done:   st.PlaylistDownloaded(pl),
-		Failed: failed,
+		ID:      sourceID(pl.Index),
+		URL:     pl.URL,
+		Title:   titleOf(st, pl),
+		Status:  status,
+		Error:   runstate.PlainError(pl.Err),
+		Songs:   len(pl.Entries),
+		Done:    st.PlaylistDownloaded(pl),
+		Failed:  failed,
+		Finding: findingIn(st, pl),
 	}
+}
+
+// findingIn is how many songs of a playlist are being looked up now.
+func findingIn(st *runstate.State, pl *runstate.Playlist) int {
+	finding := 0
+	for _, id := range pl.Entries {
+		if en := st.Entry(id); en != nil && en.State == engine.StateResolving {
+			finding++
+		}
+	}
+
+	return finding
 }
 
 // titleOf is the name of a playlist. A single song has no playlist title, so it is called by its song.

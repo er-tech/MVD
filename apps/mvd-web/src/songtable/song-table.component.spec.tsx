@@ -2,7 +2,7 @@ import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Table } from '../library'
-import type { Song } from '../library'
+import type { Song, Source } from '../library'
 import { SongTable } from './song-table.component.tsx'
 
 afterEach(cleanup)
@@ -17,7 +17,7 @@ function shown (selected?: string) {
   const onSelect = vi.fn()
   render(
     <ChakraProvider value={defaultSystem}>
-      <SongTable songs={songs} selected={selected} onSelect={onSelect} entriesFor={() => Promise.resolve([])} />
+      <SongTable songs={songs} sources={new Table<Source>()} selected={selected} onSelect={onSelect} entriesFor={() => Promise.resolve([])} />
     </ChakraProvider>,
   )
 
@@ -48,7 +48,7 @@ describe('SongTable', () => {
 
   it('has a handle to resize each column', () => {
     shown()
-    expect(screen.getAllByRole('separator')).toHaveLength(6)
+    expect(screen.getAllByRole('separator')).toHaveLength(7)
   })
 
   it('moves the choice down and up with the arrows, in the order shown', () => {

@@ -1,6 +1,11 @@
 import type { ApplyResult, Batch, Run, Song, Source, State } from './library.contract.ts'
 import { Table } from './table.store.ts'
 
+/** The place of a source, which orders the sources. */
+function sourcePosition (source: Source): number {
+  return source.position
+}
+
 const emptyRun: Run = {
   phase: 'empty', started: false, paused: false, sources: 0, songs: 0, done: 0, failed: 0, active: 0, speed: 0,
 }
@@ -14,8 +19,8 @@ export class LibraryStore {
   private current = 0
   private readonly runListeners = new Set<() => void>()
 
-  /** The sources, by ID. */
-  readonly sources = new Table<Source>()
+  /** The sources, by ID, in the order of their place in the list. */
+  readonly sources = new Table<Source>(sourcePosition)
   /** The songs, by ID. */
   readonly songs = new Table<Song>()
 

@@ -58,6 +58,24 @@ func (t *table[T]) remove(ids map[string]struct{}) bool {
 	return true
 }
 
+// move puts the row with the ID at index to, clamped to the ends, and says whether its place changed.
+func (t *table[T]) move(id string, to int) bool {
+	from := -1
+	for at, held := range t.order {
+		if held == id {
+			from = at
+		}
+	}
+	to = max(0, min(to, len(t.order)-1))
+	if from < 0 || from == to {
+		return false
+	}
+	t.order = append(t.order[:from], t.order[from+1:]...)
+	t.order = append(t.order[:to], append([]string{id}, t.order[to:]...)...)
+
+	return true
+}
+
 // all returns the rows in order.
 func (t *table[T]) all() []T {
 	rows := make([]T, 0, len(t.order))

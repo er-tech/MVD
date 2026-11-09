@@ -98,4 +98,5 @@ export type MenuAction =
   'redo' |
   'cut' |
   'copy' |
-  'paste'
+  'paste' |
+  'search-songs'

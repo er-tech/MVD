@@ -20,10 +20,16 @@ func NewStore() *Store {
 }
 
 // SetSource adds the source or replaces the one with the same ID. A source equal to the one held is
-// not a change: the revision stays and nothing is queued, so a writer may repeat itself for free.
+// not a change: the revision stays and nothing is queued, so a writer may repeat itself for free. The
+// store keeps the Position of a source it holds, and gives a new one the place after the last.
 func (s *Store) SetSource(source Source) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if held, found := s.sources.rows[source.ID]; found {
+		source.Position = held.Position
+	} else {
+		source.Position = len(s.sources.order) + 1
+	}
 	if s.sources.set(source.ID, source) {
 		s.revision++
 	}
@@ -63,9 +69,40 @@ func (s *Store) RemoveSource(id string) {
 	}
 	removedSource := s.sources.remove(map[string]struct{}{id: {}})
 	removedSongs := s.songs.remove(gone)
-	if removedSource || removedSongs {
+	renumbered := s.renumber()
+	if removedSource || removedSongs || renumbered {
 		s.revision++
 	}
+}
+
+// MoveSource puts the source at place to (from 1, a place past either end is the end) and gives every
+// source the Position of its new place. It says false when the store holds no such source or the
+// place does not change.
+func (s *Store) MoveSource(id string, to int) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.sources.move(id, to-1) {
+		return false
+	}
+	s.renumber()
+	s.revision++
+
+	return true
+}
+
+// renumber gives each source the Position of its place and says whether any changed.
+func (s *Store) renumber() bool {
+	changed := false
+	for at, id := range s.sources.order {
+		row := s.sources.rows[id]
+		if row.Position != at+1 {
+			row.Position = at + 1
+			s.sources.set(id, row)
+			changed = true
+		}
+	}
+
+	return changed
 }
 
 // Clear drops everything, in one change.

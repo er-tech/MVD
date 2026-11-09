@@ -5,7 +5,7 @@ import { LibraryStore } from './library.store.ts'
 const run = (phase: Run['phase'] = 'loading'): Run => ({
   phase, started: false, paused: false, sources: 1, songs: 2, done: 0, failed: 0, active: 0, speed: 0,
 })
-const source = (id: string, title = id): Source => ({ id, url: `https://x/${id}`, title, status: 'listed', error: '', songs: 2, done: 0, failed: 0 })
+const source = (id: string, title = id): Source => ({ id, url: `https://x/${id}`, title, status: 'listed', error: '', position: 1, songs: 2, done: 0, failed: 0, finding: 0 })
 const song = (id: string, percent = 0): Song => ({
   id,
   sourceId:  'p0',

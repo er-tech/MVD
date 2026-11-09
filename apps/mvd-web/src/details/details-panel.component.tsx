@@ -2,6 +2,7 @@ import { Box, Button, Heading, Stack, Text } from '@chakra-ui/react'
 import type { Backend } from '../backend'
 import type { LibraryStore } from '../library'
 import type { Selection } from './selection.contract.ts'
+import { LogList } from './log-list.component.tsx'
 import { useDetail } from './use-detail.hook.ts'
 
 interface DetailsPanelProps {
@@ -9,6 +10,9 @@ interface DetailsPanelProps {
   store:      LibraryStore
   selection?: Selection
 }
+
+/** The words of a song that is being worked on, so the last line of its log is a step that goes on. */
+const workingStatuses = new Set(['finding', 'starting', 'downloading', 'joining'])
 
 /** How many lines of the log the panel keeps in view. */
 const logLines = 40
@@ -24,6 +28,9 @@ const logLines = 40
  */
 export function DetailsPanel ({ backend, store, selection }: DetailsPanelProps) {
   const { detail, error } = useDetail(backend, store, selection)
+
+  const status = selection?.kind === 'song' ? store.songs.getRow(selection.id)?.status : undefined
+  const working = status !== undefined && workingStatuses.has(status)
 
   if (selection === undefined) {
     return (
@@ -73,9 +80,7 @@ export function DetailsPanel ({ backend, store, selection }: DetailsPanelProps) 
       {detail.log.length > 0 && (
         <Box>
           <Text fontSize='xs' color='fg.muted'>Log</Text>
-          <Box as='pre' fontSize='xs' maxH='40' overflow='auto' whiteSpace='pre-wrap' bg='bg.muted' p='2' rounded='md'>
-            {detail.log.slice(-logLines).join('\n')}
-          </Box>
+          <LogList lines={detail.log.slice(-logLines)} working={working} />
         </Box>
       )}
     </Stack>

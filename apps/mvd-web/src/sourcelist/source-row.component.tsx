@@ -1,4 +1,4 @@
-import { Box, CloseButton, Flex, Text } from '@chakra-ui/react'
+import { Box, CloseButton, Flex, Spinner, Text } from '@chakra-ui/react'
 import { memo, useCallback, useSyncExternalStore } from 'react'
 import type { Source, Table } from '../library'
 
@@ -28,7 +28,7 @@ function summary (source: Source): string {
 }
 
 /**
- * One source. It listens to its own row only, so a change to another source does not draw it again.
+ * One source, with its place in the list and a spinner while its songs are listed or looked up. It listens to its own row only, so a change to another source does not draw it again.
  *
  * @param props.id - the ID of the source.
  * @param props.sources - where the sources are.
@@ -59,10 +59,12 @@ export const SourceRow = memo(function SourceRow ({ id, sources, selected, onSel
       borderBottomWidth='1px'
       cursor='default'
     >
+      <Text w='6' flexShrink={0} color='fg.muted' textAlign='end' aria-label='Place in the list'>{source.position}</Text>
       <Box flex='1' minW='0'>
         <Text truncate fontWeight='medium'>{source.title}</Text>
         <Text truncate fontSize='xs' color={source.status === 'failed' ? 'red.fg' : 'fg.muted'}>{summary(source)}</Text>
       </Box>
+      {(source.status === 'listing' || source.finding > 0) && <Spinner size='xs' color='blue.fg' aria-label='Loading songs' />}
       <CloseButton
         size='2xs'
         aria-label={`Remove ${source.title}`}

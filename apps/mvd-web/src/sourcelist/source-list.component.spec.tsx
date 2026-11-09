@@ -6,19 +6,20 @@ import type { Source } from '../library'
 import { SourceList } from './source-list.component.tsx'
 
 const source = (id: string, parts: Partial<Source> = {}): Source => ({
-  id, url: `https://x/${id}`, title: `List ${id}`, status: 'listed', error: '', songs: 4, done: 1, failed: 0, ...parts,
+  id, url: `https://x/${id}`, title: `List ${id}`, status: 'listed', error: '', position: 1, songs: 4, done: 1, failed: 0, finding: 0, ...parts,
 })
 
 function shown (sources: Table<Source>) {
   const onSelect = vi.fn()
   const onRemove = vi.fn()
+  const onMove = vi.fn()
   render(
     <ChakraProvider value={defaultSystem}>
-      <SourceList sources={sources} onSelect={onSelect} onRemove={onRemove} entriesFor={() => Promise.resolve([])} />
+      <SourceList sources={sources} onSelect={onSelect} onRemove={onRemove} onMove={onMove} entriesFor={() => Promise.resolve([])} />
     </ChakraProvider>,
   )
 
-  return { onSelect, onRemove }
+  return { onSelect, onRemove, onMove }
 }
 
 afterEach(cleanup)

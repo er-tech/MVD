@@ -97,3 +97,18 @@ func TestTheStateAndTheVersionOfASongAreTwoWords(t *testing.T) {
 		t.Errorf("a song with no official video found has the version %q", version)
 	}
 }
+
+func TestAVideoWithNoTitleIsUnavailable(t *testing.T) {
+	for _, title := range []string{"", "[Private video]", "Deleted video"} {
+		en := &runstate.Entry{State: engine.StatePlanned}
+		en.Title = title
+		if word, _ := StatusWord(en); word != "Video unavailable" {
+			t.Fatalf("%q gave %q", title, word)
+		}
+	}
+	en := &runstate.Entry{State: engine.StatePlanned}
+	en.Title = "Song"
+	if word, _ := StatusWord(en); word != "original upload" {
+		t.Fatalf("a titled song gave %q", word)
+	}
+}

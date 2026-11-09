@@ -11,15 +11,24 @@ export function isAddress (text: string): boolean {
   }
 }
 
+/** Which video of a song a link is, or what to take from the song instead of a link. */
+export type SongPick = 'official' | 'original' | 'best-audio' | 'details'
+
+const labelStarts: Record<'official' | 'original' | 'best-audio', readonly string[]> = {
+  'official':   ['Official'],
+  'original':   ['Video in the playlist', 'Original'],
+  'best-audio': ['Best audio'],
+}
+
 /**
- * The link of a song to copy or open when the person did not choose one: the official video when one was
- * found, else the video of the playlist (the original), else whatever there is.
+ * The link of a song for one kind of video. The label is how the Go side words the link; the official video
+ * that is also the one in the playlist counts as both the official and the original.
  *
- * @param links - the links of the song, as the Go side words them.
- * @returns the link, or `undefined` when the song has none.
+ * @param links - the links of the song.
+ * @param pick - the kind of video.
+ * @returns the link, or `undefined` when the song has none of that kind.
  */
-export function preferredLink (links: readonly DetailLink[]): DetailLink | undefined {
-  return links.find(link => link.label.startsWith('Official')) ??
-    links.find(link => link.label.startsWith('Video in the playlist')) ??
-    links[0]
+export function linkOf (links: readonly DetailLink[], pick: 'official' | 'original' | 'best-audio'): DetailLink | undefined {
+  return links.find(link => labelStarts[pick].some(start => link.label.startsWith(start)) ||
+    (pick === 'original' && link.label.includes('the one in the playlist')))
 }

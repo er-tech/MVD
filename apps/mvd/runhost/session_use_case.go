@@ -213,6 +213,31 @@ func (s *Session) RemoveSource(id string) error {
 	return nil
 }
 
+// MoveSource puts a source at place to of the list (from 1) and keeps that order in the list file. An
+// ID that names nothing is an error.
+func (s *Session) MoveSource(id string, to int) error {
+	s.cmd.Lock()
+	defer s.cmd.Unlock()
+	s.mu.Lock()
+	list := s.list
+	s.mu.Unlock()
+	if list == nil || !s.store.MoveSource(id, to) {
+		if _, found := parseID(sourcePrefix, id); !found || list == nil {
+			return errors.New("that source is not in the list")
+		}
+
+		return nil
+	}
+	sources := s.store.State().Sources
+	urls := make([]string, 0, len(sources))
+	for _, source := range sources {
+		urls = append(urls, source.URL)
+	}
+	list.SetSources(urls)
+
+	return nil
+}
+
 // Start sends every song that is ready to the downloads, and each one that becomes ready later,
 // while the loading goes on. It returns at once. It returns an error when no link was added.
 func (s *Session) Start() error {
