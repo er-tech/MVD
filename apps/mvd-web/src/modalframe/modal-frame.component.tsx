@@ -15,6 +15,8 @@ export interface ModalFrameProps {
   footer?:  ReactNode
   /** The width of the modal. Defaults to `md`. */
   size?:    'xs' | 'sm' | 'md' | 'lg' | 'xl'
+  /** Make the modal as tall as the window, with the same space above and below. */
+  fill?:    boolean
 }
 
 /**
@@ -23,7 +25,7 @@ export interface ModalFrameProps {
  * @param props - see {@link ModalFrameProps}.
  * @returns the dialog, drawn in a portal.
  */
-export function ModalFrame ({ open, onClose, title, children, footer, size = 'md' }: ModalFrameProps) {
+export function ModalFrame ({ open, onClose, title, children, footer, size = 'md', fill = false }: ModalFrameProps) {
   return (
     <Dialog.Root
       open={open}
@@ -32,17 +34,18 @@ export function ModalFrame ({ open, onClose, title, children, footer, size = 'md
       }}
       size={size}
       scrollBehavior='inside'
+      placement={fill ? 'center' : undefined}
       lazyMount
       unmountOnExit
     >
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
-          <Dialog.Content>
+          <Dialog.Content h={fill ? 'calc(100dvh - 8rem)' : undefined} maxH={fill ? 'none' : undefined}>
             <Dialog.Header>
               <Dialog.Title>{title}</Dialog.Title>
             </Dialog.Header>
-            <Dialog.Body>{children}</Dialog.Body>
+            <Dialog.Body display={fill ? 'flex' : undefined} flexDirection='column' minH='0'>{children}</Dialog.Body>
             {footer !== undefined && <Dialog.Footer>{footer}</Dialog.Footer>}
           </Dialog.Content>
         </Dialog.Positioner>

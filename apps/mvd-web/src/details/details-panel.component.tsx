@@ -1,6 +1,7 @@
-import { Box, Button, Heading, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, Heading, HStack, Stack, Text } from '@chakra-ui/react'
 import type { Backend } from '../backend'
 import type { LibraryStore } from '../library'
+import { ProgressTag, QualityTag, StatusTag, VersionTag } from '../songtags'
 import type { Selection } from './selection.contract.ts'
 import { LogList } from './log-list.component.tsx'
 import { useDetail } from './use-detail.hook.ts'
@@ -13,6 +14,9 @@ interface DetailsPanelProps {
 
 /** The words of a song that is being worked on, so the last line of its log is a step that goes on. */
 const workingStatuses = new Set(['finding', 'starting', 'downloading', 'joining'])
+
+/** The fields that the tags above them already say, so the list leaves them out. */
+const tagFields = new Set(['Status', 'Version', 'Progress'])
 
 /** How many lines of the log the panel keeps in view. */
 const logLines = 40
@@ -29,8 +33,8 @@ const logLines = 40
 export function DetailsPanel ({ backend, store, selection }: DetailsPanelProps) {
   const { detail, error } = useDetail(backend, store, selection)
 
-  const status = selection?.kind === 'song' ? store.songs.getRow(selection.id)?.status : undefined
-  const working = status !== undefined && workingStatuses.has(status)
+  const song = selection?.kind === 'song' ? store.songs.getRow(selection.id) : undefined
+  const working = song !== undefined && workingStatuses.has(song.status)
 
   if (selection === undefined) {
     return (
@@ -52,11 +56,25 @@ export function DetailsPanel ({ backend, store, selection }: DetailsPanelProps) 
         <Text fontSize='xs' color='fg.muted' textTransform='uppercase'>{detail.kind === 'song' ? 'Song' : 'Playlist'}</Text>
         <Heading size='md' lineClamp='3'>{detail.title}</Heading>
       </Box>
+      {song !== undefined && (
+        <HStack wrap='wrap' gap='2' data-testid='song-tags'>
+          <StatusTag song={song} />
+          <VersionTag song={song} />
+          <ProgressTag song={song} />
+          <QualityTag song={song} />
+        </HStack>
+      )}
       <Stack as='dl' gap='2' m='0'>
-        {detail.fields.map(field => (
+        {detail.fields.filter(field => song === undefined || !tagFields.has(field.label)).map(field => (
           <Box key={field.label}>
             <Text as='dt' fontSize='xs' color='fg.muted'>{field.label}</Text>
-            <Text as='dd' m='0' wordBreak='break-word'>{field.value}</Text>
+            {field.label === 'Why this version'
+              ? (
+                  <Stack as='dd' m='0' gap='1'>
+                    {field.value.split('\n').map(line => <Text key={line} wordBreak='break-word'>{line}</Text>)}
+                  </Stack>
+                )
+              : <Text as='dd' m='0' wordBreak='break-word'>{field.value}</Text>}
           </Box>
         ))}
       </Stack>

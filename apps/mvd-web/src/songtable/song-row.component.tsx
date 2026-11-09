@@ -1,19 +1,10 @@
-import { Box, Flex, Spinner, Text } from '@chakra-ui/react'
+import { Flex, Text } from '@chakra-ui/react'
 import { memo, useCallback, useEffect, useSyncExternalStore } from 'react'
-import type { Song, Table, Tone } from '../library'
+import type { Song, Table } from '../library'
 import { countRowDraw } from '../metrics'
+import { ProgressTag, StatusTag, VersionTag } from '../songtags'
 import { rowPadding } from './song-columns.config.ts'
 import type { SongColumn } from './song-columns.config.ts'
-
-/** The colour token of each tone of a status. */
-const toneColor: Record<Tone, string> = {
-  text:      'fg',
-  dim:       'fg.muted',
-  focus:     'blue.fg',
-  highlight: 'orange.fg',
-  success:   'green.fg',
-  error:     'red.fg',
-}
 
 /** The columns when the table gives none. */
 const defaultColumns: SongColumn[] = [
@@ -63,7 +54,6 @@ export const SongRow = memo(function SongRow ({ id, songs, top, height, selected
   if (song === undefined) {
     return null
   }
-  const showBar = song.percent > 0 && song.percent < 100
   const background = selected ? 'blue.subtle' : (striped ? 'bg.muted' : 'bg')
   const lastSticky = columns.findLast(column => column.left !== undefined)?.id
   const cell = (column: SongColumn, content: React.ReactNode) => (
@@ -87,22 +77,9 @@ export const SongRow = memo(function SongRow ({ id, songs, top, height, selected
       case 'position': { return cell(column, <Text color='fg.muted' truncate>{song.position}</Text>) }
       case 'artist': { return cell(column, <Text truncate>{song.artist}</Text>) }
       case 'title': { return cell(column, <Text truncate>{song.title}</Text>) }
-      case 'status': {
-        return cell(column, (
-          <>
-            {song.status === 'finding' && <Spinner size='xs' me='2' color='blue.fg' aria-label='Looking for the video' />}
-            <Text color={toneColor[song.tone]} truncate>{song.status}</Text>
-          </>
-        ))
-      }
-      case 'version': { return cell(column, <Text color='fg.muted' truncate>{song.version}</Text>) }
-      default: {
-        return (
-          <Box key={column.id} flexShrink={0} h='2' bg={showBar ? 'bg.emphasized' : undefined} rounded='full' overflow='hidden' style={{ width: column.width }}>
-            {showBar && <Box h='full' bg='blue.solid' style={{ width: `${song.percent}%` }} />}
-          </Box>
-        )
-      }
+      case 'status': { return cell(column, <StatusTag song={song} />) }
+      case 'version': { return cell(column, <VersionTag song={song} />) }
+      default: { return cell(column, <ProgressTag song={song} />) }
     }
   }
 

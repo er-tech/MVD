@@ -1,6 +1,6 @@
 import { Box, Button, HStack, Input, Text } from '@chakra-ui/react'
 import { Reorder, motion } from 'motion/react'
-import { useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import {
   boundaryAtX, exampleName, extensionSuffix, formatTemplate, insertSegment, parseTemplate, removeSegment, templateBlocks,
 } from './template.algorithm.ts'
@@ -34,14 +34,31 @@ const pointerX = (event: MouseEvent | TouchEvent | PointerEvent): number | undef
 const pointerY = (event: MouseEvent | TouchEvent | PointerEvent): number | undefined =>
   'clientY' in event ? event.clientY : event.changedTouches[0]?.clientY
 
+/** What a block looks like, in the pattern and in the bucket, so a block does not change as it moves between them. */
+const blockLook = { px: '2', py: '0.5', borderRadius: 'sm', bg: 'blue.600', color: 'white', gap: '1' } as const
+
+/** The place a block from the bucket takes while it is dragged over the pattern: it has the size of the piece it makes. */
+function Ghost ({ block }: { block: TemplateBlock }) {
+  return (
+    <motion.div layout initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 0.55, scale: 1 }} style={{ flexShrink: 0 }}>
+      <HStack {...blockLook} outline='1px dashed' outlineColor='blue.300'>
+        <Text fontSize='sm' fontWeight='semibold' userSelect='none'>{block.label}</Text>
+      </HStack>
+    </motion.div>
+  )
+}
+
 /**
- * One button that adds a block. Press it to add the block at the end, or drag it into the pattern to
- * add it where it is dropped; it follows the pointer and goes back to its place afterwards.
+ * One button that adds a block. Press it to add the block at the end, or drag it into the pattern: the pieces make
+ * room where it would go, and it is added there when it is dropped. It looks like the piece it makes, follows the
+ * pointer and goes back to its place afterwards.
  */
-function BlockButton ({ block, onAdd, onDropAt }: {
-  block:    TemplateBlock
-  onAdd:    () => void
-  onDropAt: (x: number, y: number) => void
+function BlockButton ({ block, onAdd, onStart, onMove, onEnd }: {
+  block:   TemplateBlock
+  onAdd:   () => void
+  onStart: () => void
+  onMove:  (x: number, y: number) => void
+  onEnd:   (x: number, y: number) => void
 }) {
   const draggedRef = useRef(false)
 
@@ -50,31 +67,33 @@ function BlockButton ({ block, onAdd, onDropAt }: {
       drag
       dragSnapToOrigin
       dragMomentum={false}
-      whileDrag={{ scale: 1.08, zIndex: 30, boxShadow: '0 8px 20px rgba(0, 0, 0, 0.3)', cursor: 'grabbing' }}
-      style={{ position: 'relative', borderRadius: 6 }}
+      whileDrag={{ scale: 1.1, zIndex: 30, boxShadow: '0 8px 20px rgba(0, 0, 0, 0.3)', cursor: 'grabbing' }}
+      style={{ position: 'relative', borderRadius: 4 }}
       onDragStart={() => {
         draggedRef.current = true
+        onStart()
+      }}
+      onDrag={(event, info) => {
+        onMove(pointerX(event) ?? info.point.x, pointerY(event) ?? info.point.y)
       }}
       onDragEnd={(event, info) => {
-        const x = pointerX(event) ?? info.point.x
-        const y = pointerY(event) ?? info.point.y
-        onDropAt(x, y)
+        onEnd(pointerX(event) ?? info.point.x, pointerY(event) ?? info.point.y)
         // The click that ends a drag comes after this, and must not add a second block.
         setTimeout(() => {
           draggedRef.current = false
         }, 0)
       }}
     >
-      <Button
-        size='sm'
-        variant='outline'
+      <HStack
+        as='button'
+        {...blockLook}
         cursor='grab'
         onClick={() => {
           if (!draggedRef.current) onAdd()
         }}
       >
-        {`+ ${block.label}`}
-      </Button>
+        <Text fontSize='sm' fontWeight='semibold' userSelect='none'>{`+ ${block.label}`}</Text>
+      </HStack>
     </motion.div>
   )
 }
@@ -92,6 +111,9 @@ export function TemplateEditor ({ value, onChange }: TemplateEditorProps) {
   const [known, setKnown] = useState(value)
   const [text, setText] = useState('')
   const patternRef = useRef<HTMLDivElement>(null)
+  // While a block from the bucket is dragged: where it would go, and the middle of each piece before it made room.
+  const [preview, setPreview] = useState<{ at: number, block: TemplateBlock } | undefined>()
+  const middlesRef = useRef<number[]>([])
 
   if (value !== known) {
     setKnown(value)
@@ -113,15 +135,27 @@ export function TemplateEditor ({ value, onChange }: TemplateEditorProps) {
     addAt({ kind: 'text', text }, pieces.length)
     setText('')
   }
-  const dropBlock = (block: TemplateBlock, x: number, y: number) => {
-    const area = patternRef.current?.getBoundingClientRect()
-    if (area === undefined || x < area.left || x > area.right || y < area.top || y > area.bottom) return
-    const middles = [...patternRef.current?.querySelectorAll('[data-piece]') ?? []].map(element => {
+  const startBlock = () => {
+    middlesRef.current = [...patternRef.current?.querySelectorAll('[data-piece]') ?? []].map(element => {
       const box = element.getBoundingClientRect()
 
       return box.left + box.width / 2
     })
-    addAt({ kind: 'block', token: block.token, label: block.label }, boundaryAtX(x, middles))
+  }
+  const inPattern = (x: number, y: number) => {
+    const area = patternRef.current?.getBoundingClientRect()
+
+    return area !== undefined && x >= area.left && x <= area.right && y >= area.top && y <= area.bottom
+  }
+  const moveBlock = (block: TemplateBlock, x: number, y: number) => {
+    const at = inPattern(x, y) ? boundaryAtX(x, middlesRef.current) : undefined
+    setPreview(previous => previous?.at === at && previous?.block === block ? previous : (at === undefined ? undefined : { at, block }))
+  }
+  const endBlock = (block: TemplateBlock, x: number, y: number) => {
+    setPreview(undefined)
+    if (inPattern(x, y)) {
+      addAt({ kind: 'block', token: block.token, label: block.label }, boundaryAtX(x, middlesRef.current))
+    }
   }
 
   return (
@@ -145,46 +179,51 @@ export function TemplateEditor ({ value, onChange }: TemplateEditorProps) {
           listStyle:    'none',
         }}
       >
-        {pieces.map((piece, index) => (
-          <Reorder.Item
-            key={piece.id}
-            as='div'
-            value={piece}
-            data-piece=''
-            data-testid={`piece-${String(index)}`}
-            whileDrag={{ scale: 1.1, zIndex: 20, boxShadow: '0 8px 20px rgba(0, 0, 0, 0.3)', cursor: 'grabbing' }}
-            style={{ position: 'relative', borderRadius: 4, cursor: 'grab', flexShrink: 0 }}
-            onDragEnd={() => {
-              if (templateOf(pieces) !== known) commit(pieces)
-            }}
-          >
-            <HStack
-              gap='1'
-              px='2'
-              py='0.5'
-              borderRadius='sm'
-              bg={piece.segment.kind === 'block' ? 'blue.600' : 'bg.muted'}
-              color={piece.segment.kind === 'block' ? 'white' : 'inherit'}
-            >
-              <Text fontSize='sm' fontWeight='semibold' userSelect='none'>
-                {piece.segment.kind === 'block' ? piece.segment.label : piece.segment.text}
-              </Text>
-              <Box
-                as='button'
-                aria-label={`Remove ${segmentName(piece.segment)}`}
-                onPointerDownCapture={event => {
-                  // A press on the × is a click, never the start of a drag.
-                  event.stopPropagation()
-                }}
-                onClick={() => {
-                  const next = removeSegment(pieces.map(each => each.segment), index)
-                  commit(withIds(next))
+        {[...pieces, undefined].map((piece, index) => (
+          <Fragment key={piece?.id ?? 'end'}>
+            {preview?.at === index && <Ghost block={preview.block} />}
+            {piece !== undefined && (
+              <Reorder.Item
+                as='div'
+                value={piece}
+                data-piece=''
+                data-testid={`piece-${String(index)}`}
+                layout
+                whileDrag={{ scale: 1.1, zIndex: 20, boxShadow: '0 8px 20px rgba(0, 0, 0, 0.3)', cursor: 'grabbing' }}
+                style={{ position: 'relative', borderRadius: 4, cursor: 'grab', flexShrink: 0 }}
+                onDragEnd={() => {
+                  if (templateOf(pieces) !== known) commit(pieces)
                 }}
               >
-                ×
-              </Box>
-            </HStack>
-          </Reorder.Item>
+                <HStack
+                  gap='1'
+                  px='2'
+                  py='0.5'
+                  borderRadius='sm'
+                  bg={piece.segment.kind === 'block' ? 'blue.600' : 'bg.muted'}
+                  color={piece.segment.kind === 'block' ? 'white' : 'inherit'}
+                >
+                  <Text fontSize='sm' fontWeight='semibold' userSelect='none'>
+                    {piece.segment.kind === 'block' ? piece.segment.label : piece.segment.text}
+                  </Text>
+                  <Box
+                    as='button'
+                    aria-label={`Remove ${segmentName(piece.segment)}`}
+                    onPointerDownCapture={event => {
+                      // A press on the × is a click, never the start of a drag.
+                      event.stopPropagation()
+                    }}
+                    onClick={() => {
+                      const next = removeSegment(pieces.map(each => each.segment), index)
+                      commit(withIds(next))
+                    }}
+                  >
+                    ×
+                  </Box>
+                </HStack>
+              </Reorder.Item>
+            )}
+          </Fragment>
         ))}
         <Text fontSize='sm' color='fg.muted' flexShrink={0}>{extensionSuffix.replace('%(ext)s', 'ext')}</Text>
       </Reorder.Group>
@@ -197,8 +236,12 @@ export function TemplateEditor ({ value, onChange }: TemplateEditorProps) {
             onAdd={() => {
               addAt({ kind: 'block', token: block.token, label: block.label }, pieces.length)
             }}
-            onDropAt={(x, y) => {
-              dropBlock(block, x, y)
+            onStart={startBlock}
+            onMove={(x, y) => {
+              moveBlock(block, x, y)
+            }}
+            onEnd={(x, y) => {
+              endBlock(block, x, y)
             }}
           />
         ))}
