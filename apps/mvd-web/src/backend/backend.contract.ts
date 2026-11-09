@@ -21,6 +21,8 @@ export interface Backend {
   /** Put a link in the list and start to load it. */
   addSource:    (url: string) => Promise<void>
   removeSource: (id: string) => Promise<void>
+  /** Put a source at a place of the list, counted from 1. */
+  moveSource:   (id: string, to: number) => Promise<void>
   /** Download what is ready, and each song that becomes ready later. */
   start:        () => Promise<void>
   pause:        () => Promise<void>

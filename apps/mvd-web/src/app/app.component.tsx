@@ -6,7 +6,7 @@ import type { Backend, ListInfo } from '../backend'
 import { DetailsPanel } from '../details'
 import type { Selection } from '../details'
 import { copyItem, menuEntriesOf, openItem } from '../itemactions'
-import type { ItemActionDeps } from '../itemactions'
+import type { ItemActionDeps, SongPick } from '../itemactions'
 import { LibraryStore } from '../library'
 import { connectLibrary } from '../librarysync'
 import { MetricsBar, usePageMetrics } from '../metrics'
@@ -124,6 +124,14 @@ export function App ({ backend }: { backend: Backend }) {
     }
   }, [backend, selection, sourceId])
 
+  const moveSource = useCallback(async (id: string, place: number) => {
+    try {
+      await backend.moveSource(id, place)
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : String(error))
+    }
+  }, [backend])
+
   const itemDeps = useMemo<ItemActionDeps>(() => ({
     backend,
     store,
@@ -132,11 +140,11 @@ export function App ({ backend }: { backend: Backend }) {
       void removeSource(id)
     },
   }), [backend, store, removeSource])
-  const copySelected = useCallback((chosen: Selection) => {
-    void copyItem(itemDeps, chosen.kind, chosen.id)
+  const copySelected = useCallback((chosen: Selection, pick: SongPick = 'official') => {
+    void copyItem(itemDeps, chosen.kind, chosen.id, pick)
   }, [itemDeps])
-  const openSelected = useCallback((chosen: Selection) => {
-    void openItem(itemDeps, chosen.kind, chosen.id)
+  const openSelected = useCallback((chosen: Selection, pick: SongPick = 'official') => {
+    void openItem(itemDeps, chosen.kind, chosen.id, pick)
   }, [itemDeps])
   const sourceEntries = useCallback((id: string) => menuEntriesOf(itemDeps, 'source', id), [itemDeps])
   const songEntries = useCallback((id: string) => menuEntriesOf(itemDeps, 'song', id), [itemDeps])
@@ -180,6 +188,7 @@ export function App ({ backend }: { backend: Backend }) {
                 onRemove={id => {
                   void removeSource(id)
                 }}
+                onMove={moveSource}
               />
             </Flex>
           </Splitter.Panel>
@@ -189,6 +198,7 @@ export function App ({ backend }: { backend: Backend }) {
           <Splitter.Panel id='songs' minH='0' minW='0' overflow='hidden'>
             <SongTable
               songs={store.songs}
+              sources={store.sources}
               sourceId={sourceId}
               selected={selection?.kind === 'song' ? selection.id : undefined}
               onSelect={selectSong}

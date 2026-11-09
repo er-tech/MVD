@@ -7,9 +7,10 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { ContextMenu } from '../contextmenu'
 import type { MenuEntry } from '../contextmenu'
-import type { Song, Table } from '../library'
+import type { Song, Source, Table } from '../library'
 import { songMatches } from './fuzzy-match.algorithm.ts'
-import { songColumns } from './song-columns.config.ts'
+import { placeColumns, rowPadding, songColumns } from './song-columns.config.ts'
+import type { SongLine } from './song-columns.config.ts'
 import { SongRow } from './song-row.component.tsx'
 import { visibleIds } from './visible-ids.algorithm.ts'
 
@@ -17,6 +18,8 @@ const rowHeight = 32
 
 interface SongTableProps {
   songs:      Table<Song>
+  /** Where the sources are, for the Source # column. */
+  sources:    Table<Source>
   /** Show only the songs of this source; every song when `undefined`. */
   sourceId?:  string
   selected?:  string
@@ -41,32 +44,38 @@ function keysBelongElsewhere (target: EventTarget | null): boolean {
  * The arrows move the chosen song up and down the rows that are shown.
  *
  * @param props.songs - where the songs are.
+ * @param props.sources - where the sources are: the Source # column shows only when every source is shown.
  * @param props.sourceId - show only the songs of this source.
  * @param props.selected - the ID of the chosen song.
  * @param props.onSelect - called with the ID of the song that was clicked, or reached with the arrows.
  * @param props.entriesFor - the entries of the right-click menu of a song.
  */
-export function SongTable ({ songs, sourceId, selected, onSelect, entriesFor }: SongTableProps) {
+export function SongTable ({ songs, sources, sourceId, selected, onSelect, entriesFor }: SongTableProps) {
   const all = useSyncExternalStore(songs.subscribeList, songs.getOrder)
   // A song never changes its source, so the shown IDs change only when a song is added or removed.
   const ids = useMemo(() => visibleIds(all, songs, sourceId), [all, songs, sourceId])
   const [sorting, setSorting] = useState<SortingState>([])
   const [search, setSearch] = useState('')
+  // A source that is moved or removed changes the order of the sources, and so the Source # of its songs.
+  const sourceOrder = useSyncExternalStore(sources.subscribeList, sources.getOrder)
   const data = useMemo(() => {
     void sorting
-    const rows: Song[] = []
+    void sourceOrder
+    const rows: SongLine[] = []
     for (const id of ids) {
       const song = songs.getRow(id)
-      if (song !== undefined) rows.push(song)
+      if (song !== undefined) {
+        rows.push({ ...song, sourcePosition: sources.getRow(song.sourceId)?.position ?? 0 })
+      }
     }
 
     return rows
-  }, [ids, songs, sorting])
+  }, [ids, songs, sources, sourceOrder, sorting])
 
   const table = useReactTable({
     data,
     columns:              songColumns,
-    state:                { sorting, globalFilter: search },
+    state:                { sorting, globalFilter: search, columnVisibility: { source: sourceId === undefined } },
     onSortingChange:      setSorting,
     onGlobalFilterChange: setSearch,
     globalFilterFn:       (row, _column, value: string) => songMatches(row.original, value),
@@ -77,7 +86,7 @@ export function SongTable ({ songs, sourceId, selected, onSelect, entriesFor }: 
     getSortedRowModel:    getSortedRowModel(),
   })
   const rows = table.getRowModel().rows
-  const widths = table.getAllLeafColumns().map(column => column.getSize())
+  const columns = placeColumns(table.getVisibleLeafColumns().map(column => ({ id: column.id, width: column.getSize() })))
   const scrollerRef = useRef<HTMLDivElement>(null)
   const virtual = useVirtualizer({
     count:            rows.length,
@@ -130,23 +139,26 @@ export function SongTable ({ songs, sourceId, selected, onSelect, entriesFor }: 
           top='0'
           zIndex='1'
           minW='full'
-          w={table.getTotalSize() + 24}
-          px='3'
+          w={table.getTotalSize() + rowPadding * 2}
+          style={{ paddingInline: rowPadding }}
           bg='bg'
           borderBottomWidth='1px'
           fontSize='xs'
           color='fg.muted'
           textTransform='uppercase'
         >
-          {table.getHeaderGroups()[0]?.headers.map(header => {
+          {table.getHeaderGroups()[0]?.headers.map((header, index) => {
             const sort = header.column.getIsSorted()
+            const left = columns[index].left
 
             return (
               <Flex
                 key={header.id}
                 role='columnheader'
                 aria-sort={sort === 'asc' ? 'ascending' : (sort === 'desc' ? 'descending' : 'none')}
-                position='relative'
+                position={left === undefined ? 'relative' : 'sticky'}
+                zIndex={left === undefined ? undefined : 1}
+                bg={left === undefined ? undefined : 'bg'}
                 align='center'
                 gap='1'
                 py='1'
@@ -154,7 +166,7 @@ export function SongTable ({ songs, sourceId, selected, onSelect, entriesFor }: 
                 flexShrink={0}
                 cursor='pointer'
                 userSelect='none'
-                style={{ width: header.getSize() }}
+                style={{ width: header.getSize(), left }}
                 onClick={header.column.getToggleSortingHandler()}
               >
                 <Text truncate>{String(header.column.columnDef.header)}</Text>
@@ -187,7 +199,7 @@ export function SongTable ({ songs, sourceId, selected, onSelect, entriesFor }: 
                 : 'No song matches the search.'}
             </Text>
           )}
-          <Box position='relative' minW='full' style={{ height: virtual.getTotalSize(), width: table.getTotalSize() + 24 }}>
+          <Box position='relative' minW='full' style={{ height: virtual.getTotalSize(), width: table.getTotalSize() + rowPadding * 2 }}>
             {virtual.getVirtualItems().map(item => (
               <SongRow
                 key={rows[item.index].id}
@@ -197,7 +209,8 @@ export function SongTable ({ songs, sourceId, selected, onSelect, entriesFor }: 
                 height={item.size}
                 selected={selected === rows[item.index].id}
                 striped={item.index % 2 === 1}
-                widths={widths}
+                columns={columns}
+                sourcePosition={rows[item.index].original.sourcePosition}
                 onSelect={onSelect}
               />
             ))}

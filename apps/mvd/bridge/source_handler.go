@@ -21,6 +21,14 @@ func (a *App) RemoveSource(id string) error {
 	return a.session.RemoveSource(id)
 }
 
+// MoveSource puts a source at a place of the list, which counts from 1. The order is kept when the
+// list is saved.
+//
+// id is the ID of the source row and to the place it goes to.
+func (a *App) MoveSource(id string, to int) error {
+	return a.session.MoveSource(id, to)
+}
+
 // GetDetail says all there is to know about the selected source or song, for the details panel.
 //
 // kind is "source" or "song" and id the ID of the row. The error says the item is not in the list.

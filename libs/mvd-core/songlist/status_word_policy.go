@@ -1,6 +1,8 @@
 package songlist
 
 import (
+	"strings"
+
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runstate"
 )
@@ -58,7 +60,25 @@ func plannedWord(en *runstate.Entry) (word string, tone Tone) {
 		return "better found", ToneFocus
 	}
 
+	if Unavailable(en) {
+		return "Video unavailable", ToneDim
+	}
+
 	return "original upload", ToneHighlight
+}
+
+// Unavailable says whether the video of the song is gone: YouTube lists it with no title, or with the
+// name it gives to a private or deleted video. Such a song has nothing to download.
+func Unavailable(en *runstate.Entry) bool {
+	if en.NamedTitle != "" {
+		return false
+	}
+	switch strings.ToLower(strings.Trim(strings.TrimSpace(en.Title), "[]")) {
+	case "", "private video", "deleted video", "video unavailable":
+		return true
+	}
+
+	return false
 }
 
 // StateWord is the word that says where a song is in the work, with nothing of which video it is:

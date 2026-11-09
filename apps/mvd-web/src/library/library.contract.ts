@@ -1,15 +1,19 @@
 /** One playlist, album or song link the person added. The ID is stable, so the page keeps rows by ID. */
 export interface Source {
-  id:     string
-  url:    string
+  id:       string
+  url:      string
+  /** The place of the source in the list, from 1. It is the number the person sees, and it changes when the source is moved. */
+  position: number
   /** The name of the playlist once it is listed, the URL until then. */
-  title:  string
+  title:    string
   /** `listing`, `listed` or `failed`. */
-  status: string
-  error:  string
-  songs:  number
-  done:   number
-  failed: number
+  status:   string
+  error:    string
+  songs:    number
+  done:     number
+  failed:   number
+  /** How many songs of the source are being looked up now. */
+  finding:  number
 }
 
 /** The colour a status asks for. */

@@ -151,6 +151,7 @@ export function fakeBackend (): FakeBackend {
     getDetail:            (kind: string, id: string) => answer('getDetail', [kind, id], () => fake.answers.detail),
     addSource:            nothing('addSource'),
     removeSource:         nothing('removeSource'),
+    moveSource:           nothing('moveSource'),
     start:                nothing('start'),
     pause:                nothing('pause'),
     resume:               nothing('resume'),

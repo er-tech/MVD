@@ -7,7 +7,7 @@ import { App } from './app.component.tsx'
 const run = (parts: Partial<Run> = {}): Run => ({
   phase: 'loading', started: false, paused: false, sources: 1, songs: 0, done: 0, failed: 0, active: 0, speed: 0, ...parts,
 })
-const source: Source = { id: 'p0', url: 'https://x/p0', title: 'Road trip', status: 'listed', error: '', songs: 3, done: 0, failed: 0 }
+const source: Source = { id: 'p0', url: 'https://x/p0', title: 'Road trip', status: 'listed', error: '', position: 1, songs: 3, done: 0, failed: 0, finding: 0 }
 const state = (): State => ({ revision: 3, sources: [source], songs: [], run: run() })
 
 const settle = () => act(async () => {

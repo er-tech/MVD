@@ -46,6 +46,7 @@ func TestEachItemAsksThePageForItsAction(t *testing.T) {
 		"Cut":                   "cut",
 		"Copy":                  "copy",
 		"Paste":                 "paste",
+		"Search songs":          "search-songs",
 	}
 	for label, action := range want {
 		entry, found := all[label]

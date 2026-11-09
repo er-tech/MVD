@@ -2,6 +2,7 @@ package library
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -193,5 +194,33 @@ func TestARunChangeIsInTheBatchOnlyWhenItChanged(t *testing.T) {
 func TestANewStoreStartsWithAnEmptyRun(t *testing.T) {
 	if got := NewStore().State().Run.Phase; got != "empty" {
 		t.Fatalf("phase %q, want empty", got)
+	}
+}
+
+func TestSourcesAreNumberedFromOneAndMovedByPlace(t *testing.T) {
+	s := NewStore()
+	for _, id := range []string{"p0", "p1", "p2"} {
+		s.SetSource(Source{ID: id})
+	}
+	s.Drain()
+	if !s.MoveSource("p2", 1) {
+		t.Fatal("the move did nothing")
+	}
+	var order []string
+	for _, source := range s.State().Sources {
+		order = append(order, fmt.Sprintf("%s=%d", source.ID, source.Position))
+	}
+	if got := strings.Join(order, " "); got != "p2=1 p0=2 p1=3" {
+		t.Fatalf("got %s", got)
+	}
+	if batch, _ := s.Drain(); len(batch.Sources.Upserts) != 3 {
+		t.Fatalf("a move must send the sources with a new place, got %d", len(batch.Sources.Upserts))
+	}
+	s.RemoveSource("p2")
+	if got := s.State().Sources[0]; got.ID != "p0" || got.Position != 1 {
+		t.Fatalf("removing must close the gap, got %+v", got)
+	}
+	if s.MoveSource("p9", 1) || s.MoveSource("p0", 1) {
+		t.Fatal("a move that changes nothing must say false")
 	}
 }

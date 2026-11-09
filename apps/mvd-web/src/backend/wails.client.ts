@@ -38,6 +38,7 @@ export function wailsBackend (target: object = globalThis): Backend {
     getDetail:            (kind, id) => call('GetDetail', kind, id),
     addSource:            url => call('AddSource', url),
     removeSource:         id => call('RemoveSource', id),
+    moveSource:           (id, to) => call('MoveSource', id, to),
     start:                () => call('Start'),
     pause:                () => call('Pause'),
     resume:               () => call('Resume'),

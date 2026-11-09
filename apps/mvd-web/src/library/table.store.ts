@@ -65,6 +65,26 @@ export class Table<T extends { id: string }> {
   }
 
   /**
+   * @param rank - gives the place of a row. The rows are then in the order of their place, and a row whose
+   * place changes moves; with none, the rows stay in the order they came in.
+   */
+  constructor (private readonly rank?: (row: T) => number) {}
+
+  private ranked (ids: readonly string[]): readonly string[] {
+    const { rank } = this
+    if (rank === undefined) {
+      return ids
+    }
+    const place = (id: string): number => {
+      const row = this.rows.get(id)
+
+      return row === undefined ? 0 : rank(row)
+    }
+
+    return [...ids].sort((a, b) => place(a) - place(b))
+  }
+
+  /**
    * Replace every row. A row with the same values as the one held is kept as it is.
    *
    * @param rows - all the rows, in order.
@@ -76,9 +96,9 @@ export class Table<T extends { id: string }> {
       const held = previous.get(row.id)
       next.set(row.id, held !== undefined && sameValues(held, row) ? held : row)
     }
-    const order = rows.map(row => row.id)
-    const sameOrder = order.length === this.order.length && order.every((id, index) => id === this.order[index])
     this.rows = next
+    const order = this.ranked(rows.map(row => row.id))
+    const sameOrder = order.length === this.order.length && order.every((id, index) => id === this.order[index])
     if (!sameOrder) {
       this.order = order
       this.listListeners.forEach(notify)
@@ -111,9 +131,11 @@ export class Table<T extends { id: string }> {
       }
     }
     const membership = added.length > 0 || removedAny
-    if (membership) {
-      const kept = removedAny ? this.order.filter(id => this.rows.has(id)) : this.order
-      this.order = [...kept, ...added.filter(id => this.rows.has(id))]
+    const kept = removedAny ? this.order.filter(id => this.rows.has(id)) : this.order
+    const next = membership ? [...kept, ...added.filter(id => this.rows.has(id))] : this.order
+    const order = this.ranked(next)
+    if (membership || order.some((id, index) => id !== this.order[index])) {
+      this.order = order
       this.listListeners.forEach(notify)
     }
     for (const row of changes.upserts) {

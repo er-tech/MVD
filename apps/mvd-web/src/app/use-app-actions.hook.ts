@@ -28,7 +28,7 @@ function matches (event: KeyboardEvent, keys: string): boolean {
   const wantsCtrl = parts.includes('Ctrl')
   const wantsShift = parts.includes('Shift')
 
-  return (event.ctrlKey || event.metaKey) === wantsCtrl && event.shiftKey === wantsShift && event.key.toLowerCase() === key.toLowerCase()
+  return (event.ctrlKey || event.metaKey) === wantsCtrl && event.shiftKey === wantsShift && event.altKey === parts.includes('Alt') && event.key.toLowerCase() === key.toLowerCase()
 }
 
 /**
@@ -78,6 +78,12 @@ export function useAppActions ({ backend, run, open, notify, modalOpen, paste, c
       case 'paste': { void ask(paste); break }
       case 'retry-failed': { void ask(backend.retryFailed); break }
       case 'quit': { void ask(backend.quit); break }
+      case 'search-songs': {
+        const field = document.querySelector<HTMLInputElement>('input[aria-label="Search the songs"]')
+        field?.focus()
+        field?.select()
+        break
+      }
       case 'open-folder': { void ask(backend.openOutputFolder); break }
     }
   }, [backend, run.paused, run.started, open, notify, paste, copyItem])
