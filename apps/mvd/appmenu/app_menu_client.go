@@ -46,10 +46,9 @@ func Build(ask func(action string)) *menu.Menu {
 	}
 
 	if runtime.GOOS == "darwin" {
-		edit := menu.EditMenu()
-		edit.SubMenu.AddSeparator()
-		item(edit.SubMenu, "Search songs", "Ctrl+F", "search-songs")
-		root.Append(edit)
+		// The role menu has no submenu to add to, so the search item has a menu of its own.
+		root.Append(menu.EditMenu())
+		item(root.AddSubmenu("Find"), "Search songs", "Ctrl+F", "search-songs")
 	} else {
 		// The keys of these four work in the page's fields by themselves; the items do the same for a click.
 		edit := root.AddSubmenu("Edit")
