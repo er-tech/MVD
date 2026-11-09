@@ -15,6 +15,7 @@ import { ShortcutsModal } from '../shortcuts'
 import { SongTable } from '../songtable'
 import { SourceList } from '../sourcelist'
 import { StatusBar } from '../statusbar'
+import { useTheme } from '../theme'
 import { Toolbar } from '../toolbar'
 import { useAppActions } from './use-app-actions.hook.ts'
 import type { ModalName } from './use-app-actions.hook.ts'
@@ -32,6 +33,7 @@ import { useTools } from './use-tools.hook.ts'
 export function App ({ backend }: { backend: Backend }) {
   const [store] = useState(() => new LibraryStore())
   const run = useSyncExternalStore(store.subscribeRun, store.getRun)
+  useTheme()
   const tools = useTools(backend)
   const metrics = usePageMetrics(backend)
   const [selection, setSelection] = useState<Selection | undefined>()

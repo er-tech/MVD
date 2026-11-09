@@ -5,6 +5,7 @@ import { ModalFrame } from '../modalframe'
 import { AdvancedTab } from './advanced-tab.component.tsx'
 import { DownloadTab } from './download-tab.component.tsx'
 import { OutputTab } from './output-tab.component.tsx'
+import { ThemeTab } from './theme-tab.component.tsx'
 
 /** The props of {@link PreferencesModal}. */
 export interface PreferencesModalProps {
@@ -84,20 +85,24 @@ function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'ope
           </Alert.Root>
         )}
         {loaded && (
-          <Tabs.Root defaultValue='output' variant='line'>
+          <Tabs.Root defaultValue='output' variant='line' display='flex' flexDirection='column' h='calc(100dvh - 18rem)' minH='16rem' maxH='40rem'>
             <Tabs.List>
               <Tabs.Trigger value='output'>Output</Tabs.Trigger>
               <Tabs.Trigger value='download'>Download</Tabs.Trigger>
               <Tabs.Trigger value='advanced'>Advanced</Tabs.Trigger>
+              <Tabs.Trigger value='theme'>Theme</Tabs.Trigger>
             </Tabs.List>
-            <Tabs.Content value='output'>
+            <Tabs.Content value='output' flex='1' minH='0' overflowY='auto'>
               <OutputTab values={loaded.values} options={loaded.options} change={change} backend={backend} fail={fail} />
             </Tabs.Content>
-            <Tabs.Content value='download'>
+            <Tabs.Content value='download' flex='1' minH='0' overflowY='auto'>
               <DownloadTab values={loaded.values} options={loaded.options} change={change} backend={backend} fail={fail} />
             </Tabs.Content>
-            <Tabs.Content value='advanced'>
+            <Tabs.Content value='advanced' flex='1' minH='0' overflowY='auto'>
               <AdvancedTab values={loaded.values} options={loaded.options} change={change} backend={backend} fail={fail} />
+            </Tabs.Content>
+            <Tabs.Content value='theme' flex='1' minH='0' overflowY='auto'>
+              <ThemeTab />
             </Tabs.Content>
           </Tabs.Root>
         )}
@@ -110,7 +115,7 @@ function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'ope
  * The window where the person changes the preferences.
  *
  * It loads the values and the choices from the backend each time it opens, and shows them in the tabs
- * Output, Download and Advanced.
+ * Output, Download, Advanced and Theme. The tabs stay in place and the content of each tab scrolls.
  * Save sends the values. A refusal shows in the modal, which stays open. Cancel sends nothing.
  *
  * @param props - see {@link PreferencesModalProps}.

@@ -33,9 +33,9 @@ describe('PreferencesModal', () => {
     expect(screen.getByText('Example: Part Time Lover.mp4')).toBeTruthy()
   })
 
-  it('has the tabs Output, Download and Advanced', async () => {
+  it('has the tabs Output, Download, Advanced and Theme', async () => {
     await open()
-    expect(screen.getAllByRole('tab').map(item => item.textContent)).toEqual(['Output', 'Download', 'Advanced'])
+    expect(screen.getAllByRole('tab').map(item => item.textContent)).toEqual(['Output', 'Download', 'Advanced', 'Theme'])
   })
 
   it('says what each setting does, as the old window did', async () => {
