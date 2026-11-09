@@ -1,6 +1,7 @@
 package appmenu
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 
@@ -47,6 +48,12 @@ func TestEachItemAsksThePageForItsAction(t *testing.T) {
 		"Copy":                  "copy",
 		"Paste":                 "paste",
 		"Search songs":          "search-songs",
+	}
+	if runtime.GOOS == "darwin" {
+		// The native Edit menu gives macOS these items, so they have no click handler of ours.
+		for _, label := range []string{"Undo", "Redo", "Cut", "Copy", "Paste"} {
+			delete(want, label)
+		}
 	}
 	for label, action := range want {
 		entry, found := all[label]
