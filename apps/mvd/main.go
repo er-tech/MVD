@@ -227,7 +227,9 @@ func run(movedFrom string, askToMove bool, startupList string) error {
 		MinWidth:    760,
 		MinHeight:   480,
 		AssetServer: &assetserver.Options{Assets: frontend},
-		Menu:        appmenu.Build(func(action string) { menuAction(&window, action) }),
+		// A .mvd dropped on the window opens as the list; links dropped from a browser reach the page as text.
+		DragAndDrop: &options.DragAndDrop{EnableFileDrop: true},
+		Menu:       appmenu.Build(func(action string) { menuAction(&window, action) }),
 		OnStartup: func(wctx context.Context) {
 			window.Store(wctx)
 			app.Startup(wctx)

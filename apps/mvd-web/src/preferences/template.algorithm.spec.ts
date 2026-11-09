@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { exampleName, formatTemplate, moveSegment, parseTemplate, removeSegment } from './template.algorithm.ts'
+import { boundaryAtX, exampleName, formatTemplate, insertSegment, moveSegment, parseTemplate, removeSegment } from './template.algorithm.ts'
 
 const artistTitle = '%(artist,uploader)s - %(title)s.%(ext)s'
 
@@ -64,5 +64,25 @@ describe('exampleName', () => {
   it('pads an index and reads NA for a field the sample lacks', () => {
     expect(exampleName('%(playlist_index)02d %(nothing)s.%(ext)s', 'mkv')).toBe('10 NA.mkv')
     expect(exampleName('%(playlist_index)05d', 'mp4')).toBe('00010')
+  })
+})
+
+describe('insertSegment', () => {
+  const [artist, dash, title] = parseTemplate(artistTitle)
+
+  it('puts a piece in at a boundary, held inside the pattern', () => {
+    expect(insertSegment([artist, title], dash, 1)).toEqual([artist, dash, title])
+    expect(insertSegment([artist, title], dash, 0)).toEqual([dash, artist, title])
+    expect(insertSegment([artist, title], dash, 99)).toEqual([artist, title, dash])
+    expect(insertSegment([artist, title], dash, -3)).toEqual([dash, artist, title])
+  })
+})
+
+describe('boundaryAtX', () => {
+  it('counts the pieces whose middle is left of the pointer', () => {
+    expect(boundaryAtX(5, [10, 50, 90])).toBe(0)
+    expect(boundaryAtX(60, [10, 50, 90])).toBe(2)
+    expect(boundaryAtX(500, [10, 50, 90])).toBe(3)
+    expect(boundaryAtX(5, [])).toBe(0)
   })
 })

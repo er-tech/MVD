@@ -18,6 +18,7 @@ import { StatusBar } from '../statusbar'
 import { Toolbar } from '../toolbar'
 import { useAppActions } from './use-app-actions.hook.ts'
 import type { ModalName } from './use-app-actions.hook.ts'
+import { useLinkInput } from './use-link-input.hook.ts'
 import { useTools } from './use-tools.hook.ts'
 
 /**
@@ -84,7 +85,9 @@ export function App ({ backend }: { backend: Backend }) {
   const closeModal = useCallback(() => {
     setModal(undefined)
   }, [])
-  useAppActions({ backend, run, open: setModal, notify: setNotice, modalOpen: modal !== undefined || recovery !== undefined })
+  const modalOpen = modal !== undefined || recovery !== undefined
+  const { paste } = useLinkInput({ backend, enabled: !modalOpen, notify: setNotice })
+  useAppActions({ backend, run, open: setModal, notify: setNotice, modalOpen, paste })
 
   const selectSource = useCallback((id: string) => {
     setSelection({ kind: 'source', id })

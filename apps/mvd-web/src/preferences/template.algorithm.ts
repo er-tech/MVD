@@ -97,6 +97,28 @@ export function moveSegment (segments: Segment[], from: number, to: number): Seg
 }
 
 /**
+ * Put a piece in at the boundary `at`: 0 is before the first piece and `length` after the last.
+ *
+ * @returns the pieces with the new one in, the boundary held between 0 and `length`.
+ */
+export function insertSegment (segments: Segment[], segment: Segment, at: number): Segment[] {
+  const where = Math.max(0, Math.min(at, segments.length))
+
+  return [...segments.slice(0, where), segment, ...segments.slice(where)]
+}
+
+/**
+ * The boundary of the pattern that a pointer is nearest to, going by where the pieces are.
+ *
+ * @param x - the pointer's horizontal position.
+ * @param middles - the horizontal middle of each piece, left to right.
+ * @returns the number of pieces whose middle is left of the pointer.
+ */
+export function boundaryAtX (x: number, middles: number[]): number {
+  return middles.filter(middle => middle < x).length
+}
+
+/**
  * Take piece `index` out.
  *
  * @returns the pieces without it, or the same pieces when there is no such piece.

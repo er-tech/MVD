@@ -10,16 +10,22 @@ export interface Shortcut {
   action: MenuAction
 }
 
-/** Every keyboard shortcut of the app. The shell reads it to handle keys, the shortcuts modal shows it. */
+/**
+ * Every keyboard shortcut of the app. The shell reads it to handle keys, the shortcuts modal shows it, and
+ * the native menu (apps/mvd/appmenu) writes the same keys beside its items. Cut, copy, paste and undo are
+ * not here: the fields of the page handle those keys themselves.
+ */
 export const shortcutList: readonly Shortcut[] = [
-  { keys: 'Ctrl+L', label: 'Add music', action: 'add' },
+  { keys: 'Ctrl+Shift+N', label: 'Add music', action: 'add' },
   { keys: 'Ctrl+N', label: 'New list', action: 'new-list' },
   { keys: 'Ctrl+O', label: 'Open a list', action: 'open-list' },
   { keys: 'Ctrl+S', label: 'Save the list', action: 'save-list' },
   { keys: 'Ctrl+Shift+S', label: 'Save the list as', action: 'save-list-as' },
-  { keys: 'Ctrl+Enter', label: 'Start the downloads', action: 'start' },
-  { keys: 'Ctrl+P', label: 'Pause or resume', action: 'pause-resume' },
-  { keys: 'Ctrl+R', label: 'Retry the failed songs', action: 'retry-failed' },
   { keys: 'Ctrl+,', label: 'Preferences', action: 'preferences' },
-  { keys: 'F1', label: 'Keyboard shortcuts', action: 'shortcuts' },
+  { keys: 'Ctrl+Enter', label: 'Start the downloads, or pause and resume them', action: 'start' },
+  { keys: 'Ctrl+R', label: 'Retry the failed songs', action: 'retry-failed' },
+  { keys: 'Ctrl+E', label: 'Open the songs folder', action: 'open-folder' },
+  { keys: 'Ctrl+K', label: 'Keyboard shortcuts', action: 'shortcuts' },
+  { keys: 'Ctrl+M', label: 'About MVD', action: 'about' },
+  { keys: 'Ctrl+Q', label: 'Quit', action: 'quit' },
 ]

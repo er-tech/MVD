@@ -6,7 +6,11 @@ type Call = (...args: unknown[]) => Promise<unknown>
 
 interface WailsWindow {
   go:      { bridge: { App: Record<string, Call> } }
-  runtime: { EventsOn: (name: string, callback: (...data: never[]) => void) => () => void }
+  runtime: {
+    EventsOn:      (name: string, callback: (...data: never[]) => void) => () => void
+    OnFileDrop:    (callback: (x: number, y: number, paths: string[]) => void, useDropTarget: boolean) => void
+    OnFileDropOff: () => void
+  }
 }
 
 /**
@@ -65,7 +69,17 @@ export function wailsBackend (target: object = globalThis): Backend {
     quit:                 () => call('Quit'),
     confirmQuit:          () => call('ConfirmQuit'),
     onMenu:               listener => on<MenuAction>('menu', listener),
-    onCloseRequested:     listener => on<undefined>('close-requested', () => {
+    onFileDrop:           listener => {
+      // Anywhere on the window counts, not only an element marked as a drop target.
+      wails.runtime.OnFileDrop((_x, _y, paths) => {
+        listener(paths)
+      }, false)
+
+      return () => {
+        wails.runtime.OnFileDropOff()
+      }
+    },
+    onCloseRequested: listener => on<undefined>('close-requested', () => {
       listener()
     }),
     metric: (name, value) => {

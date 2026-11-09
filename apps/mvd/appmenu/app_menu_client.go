@@ -1,11 +1,13 @@
 // Package appmenu is the native menu of the window. Each item asks the page to do something, by
 // the name of the action, and the page does it the same way as it does for a key: the menu holds no
 // logic. Items carry no accelerator, because the page handles the keys and a second handler would
-// do each action twice.
+// do each action twice. The keys are only written beside the label, after a tab, so the menu shows
+// them; the Edit keys are the ones the page's own fields already handle.
 package appmenu
 
 import (
 	"runtime"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/menu"
 )
@@ -19,38 +21,51 @@ func Build(ask func(action string)) *menu.Menu {
 	if runtime.GOOS == "darwin" {
 		root.Append(menu.AppMenu())
 	}
-	item := func(target *menu.Menu, label, action string) {
-		target.AddText(label, nil, func(*menu.CallbackData) { ask(action) })
+	// The keys are as the page reads them (shortcut-list.content.ts); the Mac shows Cmd for Ctrl.
+	item := func(target *menu.Menu, label, keys, action string) {
+		if runtime.GOOS == "darwin" {
+			keys = strings.ReplaceAll(keys, "Ctrl", "Cmd")
+		}
+		target.AddText(label+"\t"+keys, nil, func(*menu.CallbackData) { ask(action) })
 	}
 
 	file := root.AddSubmenu("File")
-	item(file, "Add music…", "add")
+	item(file, "Add music…", "Ctrl+Shift+N", "add")
 	file.AddSeparator()
-	item(file, "New list", "new-list")
-	item(file, "Open list…", "open-list")
-	item(file, "Save list", "save-list")
-	item(file, "Save list as…", "save-list-as")
+	item(file, "New list", "Ctrl+N", "new-list")
+	item(file, "Open list…", "Ctrl+O", "open-list")
+	item(file, "Save list", "Ctrl+S", "save-list")
+	item(file, "Save list as…", "Ctrl+Shift+S", "save-list-as")
 	file.AddSeparator()
-	item(file, "Preferences…", "preferences")
+	item(file, "Preferences…", "Ctrl+,", "preferences")
 	if runtime.GOOS != "darwin" {
 		file.AddSeparator()
-		file.AddText("Quit", nil, func(*menu.CallbackData) { ask("quit") })
+		item(file, "Quit", "Ctrl+Q", "quit")
 	}
 
 	if runtime.GOOS == "darwin" {
 		root.Append(menu.EditMenu())
+	} else {
+		// The keys of these four work in the page's fields by themselves; the items do the same for a click.
+		edit := root.AddSubmenu("Edit")
+		item(edit, "Undo", "Ctrl+Z", "undo")
+		item(edit, "Redo", "Ctrl+Y", "redo")
+		edit.AddSeparator()
+		item(edit, "Cut", "Ctrl+X", "cut")
+		item(edit, "Copy", "Ctrl+C", "copy")
+		item(edit, "Paste", "Ctrl+V", "paste")
 	}
 
 	run := root.AddSubmenu("Run")
-	item(run, "Start", "start")
-	item(run, "Pause or resume", "pause-resume")
-	item(run, "Retry failed songs", "retry-failed")
+	item(run, "Start", "Ctrl+Enter", "start")
+	item(run, "Pause or resume", "Ctrl+Enter", "pause-resume")
+	item(run, "Retry failed songs", "Ctrl+R", "retry-failed")
 	run.AddSeparator()
-	item(run, "Open the songs folder", "open-folder")
+	item(run, "Open the songs folder", "Ctrl+E", "open-folder")
 
 	help := root.AddSubmenu("Help")
-	item(help, "Keyboard shortcuts", "shortcuts")
-	item(help, "About MVD", "about")
+	item(help, "Keyboard shortcuts", "Ctrl+K", "shortcuts")
+	item(help, "About MVD", "Ctrl+M", "about")
 
 	return root
 }
