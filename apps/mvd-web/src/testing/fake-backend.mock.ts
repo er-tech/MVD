@@ -9,6 +9,8 @@ export interface FakeBackend extends Backend {
   sendBatch:        (batch: Batch) => void
   /** Send a list file the system opened, to the listeners of `onOpenFile`. */
   sendOpenFile:     (path: string) => void
+  /** Send the paths of files dropped on the window, to the listeners of `onFileDrop`. */
+  sendFileDrop:     (paths: string[]) => void
   /** Send a menu action to the listeners of `onMenu`. */
   sendMenu:         (action: MenuAction) => void
   /** Send a close request to the listeners of `onCloseRequested`. */
@@ -55,6 +57,7 @@ export function fakeBackend (): FakeBackend {
   const menuListeners = new Set<(action: MenuAction) => void>()
   const closeListeners = new Set<() => void>()
   const openFileListeners = new Set<(path: string) => void>()
+  const fileDropListeners = new Set<(paths: string[]) => void>()
   const fake = {
     calls:    [],
     failNext: new Map(),
@@ -114,6 +117,9 @@ export function fakeBackend (): FakeBackend {
     }),
     sendOpenFile: (path: string) => openFileListeners.forEach(listener => {
       listener(path)
+    }),
+    sendFileDrop: (paths: string[]) => fileDropListeners.forEach(listener => {
+      listener(paths)
     }),
     sendMenu: (action: MenuAction) => menuListeners.forEach(listener => {
       listener(action)
@@ -183,6 +189,11 @@ export function fakeBackend (): FakeBackend {
       menuListeners.add(listener)
 
       return () => menuListeners.delete(listener)
+    },
+    onFileDrop: (listener: (paths: string[]) => void) => {
+      fileDropListeners.add(listener)
+
+      return () => fileDropListeners.delete(listener)
     },
     onCloseRequested: (listener: () => void) => {
       closeListeners.add(listener)

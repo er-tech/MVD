@@ -47,18 +47,24 @@ describe('TemplateEditor', () => {
     expect(onChange).toHaveBeenCalledWith(' - %(title)s.%(ext)s')
   })
 
-  it('moves a block to where it is dropped', () => {
-    const onChange = shown()
-    fireEvent.dragStart(screen.getByTestId('piece-0'))
-    fireEvent.dragOver(screen.getByTestId('drop-3'))
-    fireEvent.drop(screen.getByTestId('drop-3'))
-    expect(onChange).toHaveBeenCalledWith(' - %(title)s%(artist,uploader)s.%(ext)s')
+  it('makes every piece draggable, in the order of the pattern', () => {
+    shown()
+    const pieces = screen.getAllByTestId(/^piece-/)
+    expect(pieces.map(piece => piece.textContent)).toEqual(['ARTIST×', ' - ×', 'TITLE×'])
   })
 
-  it('changes nothing when a piece is dropped where it already is', () => {
-    const onChange = shown()
-    fireEvent.dragStart(screen.getByTestId('piece-1'))
-    fireEvent.drop(screen.getByTestId('drop-2'))
-    expect(onChange).toHaveBeenCalledWith(artistTitle)
+  it('shows a new pattern the page sets', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <ChakraProvider value={defaultSystem}>
+        <TemplateEditor value={artistTitle} onChange={onChange} />
+      </ChakraProvider>,
+    )
+    rerender(
+      <ChakraProvider value={defaultSystem}>
+        <TemplateEditor value='%(title)s.%(ext)s' onChange={onChange} />
+      </ChakraProvider>,
+    )
+    expect(screen.getAllByTestId(/^piece-/)).toHaveLength(1)
   })
 })

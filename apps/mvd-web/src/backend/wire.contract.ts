@@ -93,4 +93,9 @@ export type MenuAction =
   'preferences' |
   'shortcuts' |
   'about' |
-  'quit'
+  'quit' |
+  'undo' |
+  'redo' |
+  'cut' |
+  'copy' |
+  'paste'

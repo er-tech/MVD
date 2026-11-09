@@ -73,6 +73,8 @@ export interface Backend {
   onMenu:           (listener: (action: MenuAction) => void) => () => void
   /** Listen to a list file the system opened with the app while it runs. */
   onOpenFile:       (listener: (path: string) => void) => () => void
+  /** Listen to files dropped on the window: the listener gets their paths. */
+  onFileDrop:       (listener: (paths: string[]) => void) => () => void
   /** Listen to the window asking to close while downloads run: the page asks the person first. */
   onCloseRequested: (listener: () => void) => () => void
 

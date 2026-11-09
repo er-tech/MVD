@@ -1,6 +1,7 @@
 package appmenu
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -15,7 +16,8 @@ func items(m *menu.Menu) map[string]*menu.MenuItem {
 			if entry.SubMenu != nil {
 				walk(entry.SubMenu)
 			}
-			found[entry.Label] = entry
+			label, _, _ := strings.Cut(entry.Label, "\t")
+			found[label] = entry
 		}
 	}
 	walk(m)
@@ -39,6 +41,11 @@ func TestEachItemAsksThePageForItsAction(t *testing.T) {
 		"Open the songs folder": "open-folder",
 		"Keyboard shortcuts":    "shortcuts",
 		"About MVD":             "about",
+		"Undo":                  "undo",
+		"Redo":                  "redo",
+		"Cut":                   "cut",
+		"Copy":                  "copy",
+		"Paste":                 "paste",
 	}
 	for label, action := range want {
 		entry, found := all[label]

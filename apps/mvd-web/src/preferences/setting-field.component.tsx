@@ -1,4 +1,4 @@
-import { Field, HStack, Input, NativeSelect, NumberInput } from '@chakra-ui/react'
+import { Field, HStack, Input, NativeSelect, NumberInput, Switch } from '@chakra-ui/react'
 import type { ReactNode } from 'react'
 import { choiceLabel } from './preference-fields.content.ts'
 import type { FieldText } from './preference-fields.content.ts'
@@ -33,19 +33,21 @@ export function ChoiceField ({ text, value, choices, onChange }: {
   )
 }
 
-/** A setting that is on or off, shown as Yes and No. */
+/** A setting that is on or off, shown as a toggle. */
 export function YesNoField ({ text, value, onChange }: {
   text:     FieldText
   value:    boolean
   onChange: (value: boolean) => void
 }) {
   return (
-    <ChoiceField
-      text={text}
-      value={value ? 'yes' : 'no'}
-      choices={['yes', 'no']}
-      onChange={choice => { onChange(choice === 'yes') }}
-    />
+    <Field.Root>
+      <Switch.Root checked={value} onCheckedChange={event => { onChange(event.checked) }}>
+        <Switch.HiddenInput />
+        <Switch.Control />
+        <Switch.Label fontWeight='semibold'>{text.label}</Switch.Label>
+      </Switch.Root>
+      <Field.HelperText>{text.hint}</Field.HelperText>
+    </Field.Root>
   )
 }
 

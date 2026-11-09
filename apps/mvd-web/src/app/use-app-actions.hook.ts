@@ -15,6 +15,8 @@ interface AppActions {
   open:      (modal: ModalName) => void
   /** Shows a message from a command that Go refused. */
   notify:    (message: string) => void
+  /** What the Paste item of the menu does. */
+  paste:     () => Promise<void>
 }
 
 /** True when a key press is the shortcut written as `Ctrl+Shift+S`, `F1` and the like. */
@@ -36,8 +38,9 @@ function matches (event: KeyboardEvent, keys: string): boolean {
  * @param actions.modalOpen - whether a window is open, which keeps the keys for itself.
  * @param actions.open - opens a window of the page.
  * @param actions.notify - shows a message.
+ * @param actions.paste - pastes for the Paste item of the menu.
  */
-export function useAppActions ({ backend, run, open, notify, modalOpen }: AppActions): void {
+export function useAppActions ({ backend, run, open, notify, modalOpen, paste }: AppActions): void {
   const perform = useCallback((action: MenuAction): void => {
     const ask = async (command: () => Promise<unknown>): Promise<void> => {
       try {
@@ -55,13 +58,19 @@ export function useAppActions ({ backend, run, open, notify, modalOpen }: AppAct
       case 'open-list': { void ask(backend.openListFile); break }
       case 'save-list': { void ask(backend.saveList); break }
       case 'save-list-as': { void ask(backend.saveListAs); break }
-      case 'start': { void ask(backend.start); break }
+      // One key starts the run, and then pauses and resumes it.
+      case 'start': { void ask(run.started ? (run.paused ? backend.resume : backend.pause) : backend.start); break }
       case 'pause-resume': { void ask(run.paused ? backend.resume : backend.pause); break }
+      case 'undo':
+      case 'redo':
+      case 'cut':
+      case 'copy': { document.execCommand(action); break }
+      case 'paste': { void ask(paste); break }
       case 'retry-failed': { void ask(backend.retryFailed); break }
       case 'quit': { void ask(backend.quit); break }
       case 'open-folder': { void ask(backend.openOutputFolder); break }
     }
-  }, [backend, run.paused, open, notify])
+  }, [backend, run.paused, run.started, open, notify, paste])
 
   useEffect(() => backend.onMenu(perform), [backend, perform])
 
