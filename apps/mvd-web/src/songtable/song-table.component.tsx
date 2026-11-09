@@ -1,15 +1,18 @@
 import { Box, CloseButton, Flex, Input, InputGroup, Text } from '@chakra-ui/react'
 import {
-  getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable,
+  getCoreRowModel, getFacetedRowModel, getFacetedUniqueValues, getFilteredRowModel, getSortedRowModel, useReactTable,
 } from '@tanstack/react-table'
-import type { SortingState } from '@tanstack/react-table'
+import type { Column, SortingState } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { ContextMenu } from '../contextmenu'
 import type { MenuEntry } from '../contextmenu'
 import type { Song, Source, Table } from '../library'
 import { songMatches } from './fuzzy-match.algorithm.ts'
-import { placeColumns, rowPadding, songColumns } from './song-columns.config.ts'
+import { progressLabels, versionLook } from '../songtags'
+import { ColumnFilter } from './column-filter.component.tsx'
+import type { FilterOption } from './column-filter.component.tsx'
+import { filterColumnIds, placeColumns, rowPadding, songColumns } from './song-columns.config.ts'
 import type { SongLine } from './song-columns.config.ts'
 import { SongRow } from './song-row.component.tsx'
 import { visibleIds } from './visible-ids.algorithm.ts'
@@ -26,6 +29,18 @@ interface SongTableProps {
   onSelect:   (id: string) => void
   /** The entries of the right-click menu of a song. */
   entriesFor: (id: string) => Promise<MenuEntry[]>
+}
+
+/** The choices of the filter of a column: every value the column holds, in words. */
+function optionsOf (column: Column<SongLine>): FilterOption[] {
+  const values = Array.from(column.getFacetedUniqueValues().keys(), String).sort((a, b) => a.localeCompare(b))
+  if (column.id === 'progress') {
+    return Object.entries(progressLabels).filter(([value]) => values.includes(value)).map(([value, label]) => ({ value, label }))
+  }
+
+  const named = (value: string) => column.id === 'version' ? (versionLook(value)?.label ?? 'Not known yet') : value
+
+  return values.map(value => ({ value, label: named(value) }))
 }
 
 /** True when the keys belong to a field, a window or a button, not to the list. */
@@ -74,16 +89,18 @@ export function SongTable ({ songs, sources, sourceId, selected, onSelect, entri
 
   const table = useReactTable({
     data,
-    columns:              songColumns,
-    state:                { sorting, globalFilter: search, columnVisibility: { source: sourceId === undefined } },
-    onSortingChange:      setSorting,
-    onGlobalFilterChange: setSearch,
-    globalFilterFn:       (row, _column, value: string) => songMatches(row.original, value),
-    getRowId:             row => row.id,
-    columnResizeMode:     'onChange',
-    getCoreRowModel:      getCoreRowModel(),
-    getFilteredRowModel:  getFilteredRowModel(),
-    getSortedRowModel:    getSortedRowModel(),
+    columns:                songColumns,
+    state:                  { sorting, globalFilter: search, columnVisibility: { source: sourceId === undefined } },
+    onSortingChange:        setSorting,
+    onGlobalFilterChange:   setSearch,
+    globalFilterFn:         (row, _column, value: string) => songMatches(row.original, value),
+    getRowId:               row => row.id,
+    columnResizeMode:       'onChange',
+    getCoreRowModel:        getCoreRowModel(),
+    getFilteredRowModel:    getFilteredRowModel(),
+    getFacetedRowModel:     getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    getSortedRowModel:      getSortedRowModel(),
   })
   const rows = table.getRowModel().rows
   const columns = placeColumns(table.getVisibleLeafColumns().map(column => ({ id: column.id, width: column.getSize() })))
@@ -171,6 +188,16 @@ export function SongTable ({ songs, sources, sourceId, selected, onSelect, entri
               >
                 <Text truncate>{String(header.column.columnDef.header)}</Text>
                 <Text aria-hidden>{sort === 'asc' ? '▲' : (sort === 'desc' ? '▼' : '')}</Text>
+                {filterColumnIds.includes(header.column.id) && (
+                  <ColumnFilter
+                    title={String(header.column.columnDef.header)}
+                    options={optionsOf(header.column)}
+                    selected={(header.column.getFilterValue() as string[] | undefined) ?? []}
+                    onChange={values => {
+                      header.column.setFilterValue(values.length === 0 ? undefined : values)
+                    }}
+                  />
+                )}
                 <Box
                   role='separator'
                   aria-label={`Resize ${String(header.column.columnDef.header)}`}

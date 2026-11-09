@@ -13,7 +13,7 @@ const song = (percent = 0): Song => ({
   position:  1,
   artist:    'A',
   title:     'Song',
-  status:    'waiting',
+  status:    'official found',
   tone:      'dim',
   percent,
   speed:     0,

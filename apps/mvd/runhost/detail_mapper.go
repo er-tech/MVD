@@ -2,6 +2,7 @@ package runhost
 
 import (
 	"fmt"
+	"strings"
 
 	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/runstate"
@@ -68,7 +69,7 @@ func songDetail(st *runstate.State, en *runstate.Entry) Detail {
 		"Channel", en.Channel,
 		"Status", word,
 		"Version", row.Version,
-		"Why this version", en.Reason,
+		"Why this version", strings.Join(plainReason(en.Reason), "\n"),
 		"Picture", qualityHeight(en.Height),
 		"Audio", qualityAudio(en.AudioKbps),
 		"Progress", progress(en),

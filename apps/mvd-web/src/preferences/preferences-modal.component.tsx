@@ -70,6 +70,7 @@ function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'ope
       onClose={onClose}
       title='Preferences'
       size='xl'
+      fill
       footer={(
         <>
           <Button variant='ghost' onClick={onClose}>Cancel</Button>
@@ -77,7 +78,7 @@ function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'ope
         </>
       )}
     >
-      <Stack gap='4'>
+      <Stack gap='4' flex='1' minH='0'>
         {error !== '' && (
           <Alert.Root status='error'>
             <Alert.Indicator />
@@ -85,7 +86,7 @@ function PreferencesForm ({ backend, onClose }: Omit<PreferencesModalProps, 'ope
           </Alert.Root>
         )}
         {loaded && (
-          <Tabs.Root defaultValue='output' variant='line' display='flex' flexDirection='column' h='calc(100dvh - 18rem)' minH='16rem' maxH='40rem'>
+          <Tabs.Root defaultValue='output' variant='line' display='flex' flexDirection='column' flex='1' minH='0'>
             <Tabs.List>
               <Tabs.Trigger value='output'>Output</Tabs.Trigger>
               <Tabs.Trigger value='download'>Download</Tabs.Trigger>
