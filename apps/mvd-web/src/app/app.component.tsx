@@ -1,10 +1,12 @@
-import { Box, ChakraProvider, Flex, Text, defaultSystem } from '@chakra-ui/react'
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { Box, ChakraProvider, Flex, Splitter, Text, defaultSystem } from '@chakra-ui/react'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { AboutModal } from '../about'
 import { AddSourceModal } from '../addsource'
 import type { Backend, ListInfo } from '../backend'
 import { DetailsPanel } from '../details'
 import type { Selection } from '../details'
+import { copyItem, menuEntriesOf, openItem } from '../itemactions'
+import type { ItemActionDeps } from '../itemactions'
 import { LibraryStore } from '../library'
 import { connectLibrary } from '../librarysync'
 import { MetricsBar, usePageMetrics } from '../metrics'
@@ -20,6 +22,7 @@ import { Toolbar } from '../toolbar'
 import { useAppActions } from './use-app-actions.hook.ts'
 import type { ModalName } from './use-app-actions.hook.ts'
 import { DropOverlay } from './drop-overlay.component.tsx'
+import { useItemKeys } from './use-item-keys.hook.ts'
 import { useLinkInput } from './use-link-input.hook.ts'
 import { useTools } from './use-tools.hook.ts'
 
@@ -90,7 +93,17 @@ export function App ({ backend }: { backend: Backend }) {
   }, [])
   const modalOpen = modal !== undefined || recovery !== undefined
   const { paste, hovering } = useLinkInput({ backend, enabled: !modalOpen, notify: setNotice })
-  useAppActions({ backend, run, open: setModal, notify: setNotice, modalOpen, paste })
+  useAppActions({
+    backend,
+    run,
+    open:     setModal,
+    notify:   setNotice,
+    modalOpen,
+    paste,
+    copyItem: () => {
+      if (selection !== undefined) copySelected(selection)
+    },
+  })
 
   const selectSource = useCallback((id: string) => {
     setSelection({ kind: 'source', id })
@@ -111,6 +124,24 @@ export function App ({ backend }: { backend: Backend }) {
     }
   }, [backend, selection, sourceId])
 
+  const itemDeps = useMemo<ItemActionDeps>(() => ({
+    backend,
+    store,
+    notify: setNotice,
+    remove: id => {
+      void removeSource(id)
+    },
+  }), [backend, store, removeSource])
+  const copySelected = useCallback((chosen: Selection) => {
+    void copyItem(itemDeps, chosen.kind, chosen.id)
+  }, [itemDeps])
+  const openSelected = useCallback((chosen: Selection) => {
+    void openItem(itemDeps, chosen.kind, chosen.id)
+  }, [itemDeps])
+  const sourceEntries = useCallback((id: string) => menuEntriesOf(itemDeps, 'source', id), [itemDeps])
+  const songEntries = useCallback((id: string) => menuEntriesOf(itemDeps, 'song', id), [itemDeps])
+  useItemKeys({ selection, enabled: !modalOpen, copy: copySelected, open: openSelected, remove: itemDeps.remove })
+
   return (
     <ChakraProvider value={defaultSystem}>
       <Flex direction='column' h='100vh'>
@@ -119,38 +150,60 @@ export function App ({ backend }: { backend: Backend }) {
             setModal('add')
           }} onError={setNotice}
         />
-        <Flex flex='1' minH='0'>
-          <Flex direction='column' w='260px' borderEndWidth='1px' minH='0'>
-            <Box
-              px='3'
-              py='2'
-              borderBottomWidth='1px'
-              cursor='default'
-              fontWeight='medium'
-              bg={sourceId === undefined ? 'bg.emphasized' : undefined}
-              onClick={() => {
-                setSourceId(undefined)
-                setSelection(undefined)
-              }}
-            >
-              <Text>All songs</Text>
-            </Box>
-            <SourceList
-              sources={store.sources} selected={sourceId} onSelect={selectSource} onRemove={id => {
-                void removeSource(id)
-              }}
+        <Splitter.Root
+          flex='1'
+          minH='0'
+          panels={[{ id: 'sources', minSize: 12, maxSize: 40 }, { id: 'songs', minSize: 30 }, { id: 'details', minSize: 14, maxSize: 45 }]}
+          defaultSize={[20, 54, 26]}
+        >
+          <Splitter.Panel id='sources' minH='0' overflow='hidden'>
+            <Flex direction='column' h='full' minH='0'>
+              <Box
+                px='3'
+                py='2'
+                borderBottomWidth='1px'
+                cursor='default'
+                fontWeight='medium'
+                bg={sourceId === undefined ? 'bg.emphasized' : undefined}
+                onClick={() => {
+                  setSourceId(undefined)
+                  setSelection(undefined)
+                }}
+              >
+                <Text>All songs</Text>
+              </Box>
+              <SourceList
+                sources={store.sources}
+                selected={sourceId}
+                onSelect={selectSource}
+                entriesFor={sourceEntries}
+                onRemove={id => {
+                  void removeSource(id)
+                }}
+              />
+            </Flex>
+          </Splitter.Panel>
+          <Splitter.ResizeTrigger id='sources:songs'>
+            <Splitter.ResizeTriggerSeparator />
+          </Splitter.ResizeTrigger>
+          <Splitter.Panel id='songs' minH='0' minW='0' overflow='hidden'>
+            <SongTable
+              songs={store.songs}
+              sourceId={sourceId}
+              selected={selection?.kind === 'song' ? selection.id : undefined}
+              onSelect={selectSong}
+              entriesFor={songEntries}
             />
-          </Flex>
-          <SongTable
-            songs={store.songs}
-            sourceId={sourceId}
-            selected={selection?.kind === 'song' ? selection.id : undefined}
-            onSelect={selectSong}
-          />
-          <Flex direction='column' w='340px' borderStartWidth='1px' minH='0'>
-            <DetailsPanel backend={backend} store={store} selection={selection} />
-          </Flex>
-        </Flex>
+          </Splitter.Panel>
+          <Splitter.ResizeTrigger id='songs:details'>
+            <Splitter.ResizeTriggerSeparator />
+          </Splitter.ResizeTrigger>
+          <Splitter.Panel id='details' minH='0' overflow='hidden'>
+            <Flex direction='column' h='full' minH='0'>
+              <DetailsPanel backend={backend} store={store} selection={selection} />
+            </Flex>
+          </Splitter.Panel>
+        </Splitter.Root>
         <StatusBar
           run={run} tools={tools} notice={notice} onDismiss={() => {
             setNotice('')

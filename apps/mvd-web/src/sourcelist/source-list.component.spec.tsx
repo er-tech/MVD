@@ -14,7 +14,7 @@ function shown (sources: Table<Source>) {
   const onRemove = vi.fn()
   render(
     <ChakraProvider value={defaultSystem}>
-      <SourceList sources={sources} onSelect={onSelect} onRemove={onRemove} />
+      <SourceList sources={sources} onSelect={onSelect} onRemove={onRemove} entriesFor={() => Promise.resolve([])} />
     </ChakraProvider>,
   )
 

@@ -1,71 +1,208 @@
-import { Box, Flex, Text } from '@chakra-ui/react'
+import { Box, CloseButton, Flex, Input, InputGroup, Text } from '@chakra-ui/react'
+import {
+  getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable,
+} from '@tanstack/react-table'
+import type { SortingState } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useMemo, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { ContextMenu } from '../contextmenu'
+import type { MenuEntry } from '../contextmenu'
 import type { Song, Table } from '../library'
-import { songColumns } from './song-columns.content.ts'
+import { songMatches } from './fuzzy-match.algorithm.ts'
+import { songColumns } from './song-columns.config.ts'
 import { SongRow } from './song-row.component.tsx'
 import { visibleIds } from './visible-ids.algorithm.ts'
 
 const rowHeight = 32
 
 interface SongTableProps {
-  songs:     Table<Song>
+  songs:      Table<Song>
   /** Show only the songs of this source; every song when `undefined`. */
-  sourceId?: string
-  selected?: string
-  onSelect:  (id: string) => void
+  sourceId?:  string
+  selected?:  string
+  onSelect:   (id: string) => void
+  /** The entries of the right-click menu of a song. */
+  entriesFor: (id: string) => Promise<MenuEntry[]>
+}
+
+/** True when the keys belong to a field, a window or a button, not to the list. */
+function keysBelongElsewhere (target: EventTarget | null): boolean {
+  return (target instanceof HTMLElement && target.closest('input, textarea, select, button, [role="dialog"], [contenteditable]') !== null) ||
+    document.querySelector('[role="dialog"]') !== null
 }
 
 /**
- * The songs, as a virtual list: only the rows in view exist. A row never moves when data arrives,
- * and the chosen row is state of the page, so a change from the Go side does not touch it.
+ * The songs, as a virtual table with a search field, sorting by a column and columns the person can widen. Only the
+ * rows in view exist, and each listens to its own song, so a download that moves does not draw the others.
+ *
+ * The order and the search are worked out when the list, the sort or the search changes, not at every step of a
+ * download, so a column sorted by status settles when the person sorts again.
+ *
+ * The arrows move the chosen song up and down the rows that are shown.
  *
  * @param props.songs - where the songs are.
  * @param props.sourceId - show only the songs of this source.
  * @param props.selected - the ID of the chosen song.
- * @param props.onSelect - called with the ID of the song that was clicked.
+ * @param props.onSelect - called with the ID of the song that was clicked, or reached with the arrows.
+ * @param props.entriesFor - the entries of the right-click menu of a song.
  */
-export function SongTable ({ songs, sourceId, selected, onSelect }: SongTableProps) {
+export function SongTable ({ songs, sourceId, selected, onSelect, entriesFor }: SongTableProps) {
   const all = useSyncExternalStore(songs.subscribeList, songs.getOrder)
   // A song never changes its source, so the shown IDs change only when a song is added or removed.
   const ids = useMemo(() => visibleIds(all, songs, sourceId), [all, songs, sourceId])
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [search, setSearch] = useState('')
+  const data = useMemo(() => {
+    void sorting
+    const rows: Song[] = []
+    for (const id of ids) {
+      const song = songs.getRow(id)
+      if (song !== undefined) rows.push(song)
+    }
+
+    return rows
+  }, [ids, songs, sorting])
+
+  const table = useReactTable({
+    data,
+    columns:              songColumns,
+    state:                { sorting, globalFilter: search },
+    onSortingChange:      setSorting,
+    onGlobalFilterChange: setSearch,
+    globalFilterFn:       (row, _column, value: string) => songMatches(row.original, value),
+    getRowId:             row => row.id,
+    columnResizeMode:     'onChange',
+    getCoreRowModel:      getCoreRowModel(),
+    getFilteredRowModel:  getFilteredRowModel(),
+    getSortedRowModel:    getSortedRowModel(),
+  })
+  const rows = table.getRowModel().rows
+  const widths = table.getAllLeafColumns().map(column => column.getSize())
   const scrollerRef = useRef<HTMLDivElement>(null)
   const virtual = useVirtualizer({
-    count:            ids.length,
+    count:            rows.length,
     getScrollElement: () => scrollerRef.current,
     estimateSize:     () => rowHeight,
     overscan:         12,
   })
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if ((event.key !== 'ArrowDown' && event.key !== 'ArrowUp') || event.ctrlKey || event.metaKey || event.altKey || keysBelongElsewhere(event.target)) {
+        return
+      }
+      if (rows.length === 0) {
+        return
+      }
+      event.preventDefault()
+      const at = rows.findIndex(row => row.id === selected)
+      const next = event.key === 'ArrowDown'
+        ? (at === -1 ? 0 : Math.min(at + 1, rows.length - 1))
+        : (at === -1 ? rows.length - 1 : Math.max(at - 1, 0))
+      onSelect(rows[next].id)
+      virtual.scrollToIndex(next, { align: 'auto' })
+    }
+    addEventListener('keydown', onKey)
+
+    return () => {
+      removeEventListener('keydown', onKey)
+    }
+  }, [rows, selected, onSelect, virtual])
+
   return (
-    <Flex direction='column' flex='1' minH='0' minW='0'>
-      <Flex gap='3' px='3' py='1' borderBottomWidth='1px' fontSize='xs' color='fg.muted' textTransform='uppercase'>
-        <Text w={songColumns.position} textAlign='end'>#</Text>
-        <Text w={songColumns.artist}>Artist</Text>
-        <Text w={songColumns.title}>Title</Text>
-        <Text w={songColumns.status}>Status</Text>
-        <Text w={songColumns.version}>Version</Text>
-        <Box flex='1' />
-      </Flex>
-      <Box ref={scrollerRef} role='table' aria-rowcount={ids.length} flex='1' overflowY='auto' minH='0'>
-        {ids.length === 0 && (
-          <Text p='6' color='fg.muted' textAlign='center'>
-            No songs yet. Add a playlist or a song and its songs show here as they are found.
-          </Text>
-        )}
-        <Box position='relative' style={{ height: virtual.getTotalSize() }}>
-          {virtual.getVirtualItems().map(item => (
-            <SongRow
-              key={ids[item.index]}
-              id={ids[item.index]}
-              songs={songs}
-              top={item.start}
-              height={item.size}
-              selected={selected === ids[item.index]}
-              onSelect={onSelect}
-            />
-          ))}
-        </Box>
+    <Flex direction='column' flex='1' minH='0' minW='0' h='full'>
+      <Box px='3' py='2' borderBottomWidth='1px'>
+        <InputGroup endElement={search === '' ? undefined : <CloseButton size='2xs' aria-label='Clear the search' onClick={() => { setSearch('') }} />}>
+          <Input
+            size='sm'
+            type='search'
+            placeholder='Search the songs'
+            aria-label='Search the songs'
+            value={search}
+            onChange={event => { setSearch(event.target.value) }}
+          />
+        </InputGroup>
+      </Box>
+      <Box ref={scrollerRef} role='table' aria-rowcount={rows.length} flex='1' overflow='auto' minH='0'>
+        <Flex
+          role='row'
+          position='sticky'
+          top='0'
+          zIndex='1'
+          minW='full'
+          w={table.getTotalSize() + 24}
+          px='3'
+          bg='bg'
+          borderBottomWidth='1px'
+          fontSize='xs'
+          color='fg.muted'
+          textTransform='uppercase'
+        >
+          {table.getHeaderGroups()[0]?.headers.map(header => {
+            const sort = header.column.getIsSorted()
+
+            return (
+              <Flex
+                key={header.id}
+                role='columnheader'
+                aria-sort={sort === 'asc' ? 'ascending' : (sort === 'desc' ? 'descending' : 'none')}
+                position='relative'
+                align='center'
+                gap='1'
+                py='1'
+                pe='3'
+                flexShrink={0}
+                cursor='pointer'
+                userSelect='none'
+                style={{ width: header.getSize() }}
+                onClick={header.column.getToggleSortingHandler()}
+              >
+                <Text truncate>{String(header.column.columnDef.header)}</Text>
+                <Text aria-hidden>{sort === 'asc' ? '▲' : (sort === 'desc' ? '▼' : '')}</Text>
+                <Box
+                  role='separator'
+                  aria-label={`Resize ${String(header.column.columnDef.header)}`}
+                  position='absolute'
+                  insetEnd='0'
+                  top='0'
+                  h='full'
+                  w='6px'
+                  cursor='col-resize'
+                  touchAction='none'
+                  bg={header.column.getIsResizing() ? 'blue.solid' : undefined}
+                  _hover={{ bg: 'border.emphasized' }}
+                  onClick={event => { event.stopPropagation() }}
+                  onMouseDown={header.getResizeHandler()}
+                  onTouchStart={header.getResizeHandler()}
+                />
+              </Flex>
+            )
+          })}
+        </Flex>
+        <ContextMenu entriesFor={entriesFor} onTarget={onSelect}>
+          {rows.length === 0 && (
+            <Text p='6' color='fg.muted' textAlign='center'>
+              {ids.length === 0
+                ? 'No songs yet. Add a playlist or a song and its songs show here as they are found.'
+                : 'No song matches the search.'}
+            </Text>
+          )}
+          <Box position='relative' minW='full' style={{ height: virtual.getTotalSize(), width: table.getTotalSize() + 24 }}>
+            {virtual.getVirtualItems().map(item => (
+              <SongRow
+                key={rows[item.index].id}
+                id={rows[item.index].id}
+                songs={songs}
+                top={item.start}
+                height={item.size}
+                selected={selected === rows[item.index].id}
+                striped={item.index % 2 === 1}
+                widths={widths}
+                onSelect={onSelect}
+              />
+            ))}
+          </Box>
+        </ContextMenu>
       </Box>
     </Flex>
   )
