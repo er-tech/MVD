@@ -19,6 +19,7 @@ const song = (id: string, percent = 0): Song => ({
   version:   '',
   height:    0,
   audioKbps: 0,
+  audio:     '',
   error:     '',
 })
 const upserts = (...rows: Song[]) => ({ upserts: rows, removed: [] })

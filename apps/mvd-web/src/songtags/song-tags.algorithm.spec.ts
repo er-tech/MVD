@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { progressOf, qualityOf, versionLook } from './song-tags.algorithm.ts'
+import { audioLook, progressOf, qualityOf, versionLook } from './song-tags.algorithm.ts'
 
 describe('progressOf', () => {
   it('says how far a song is from its status', () => {
@@ -20,5 +20,13 @@ describe('versionLook and qualityOf', () => {
   it('joins the picture and the audio', () => {
     expect(qualityOf({ height: 1080, audioKbps: 256 })).toBe('1080p · 256 kbps')
     expect(qualityOf({ height: 0, audioKbps: 0 })).toBe('')
+  })
+})
+
+describe('audioLook', () => {
+  it('names each step of the best audio, and none when the song has none', () => {
+    expect(audioLook('fetching')?.label).toBe('Fetching')
+    expect(audioLook('done')?.label).toBe('On the video')
+    expect(audioLook('')).toBeUndefined()
   })
 })

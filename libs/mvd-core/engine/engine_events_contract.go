@@ -1,5 +1,7 @@
 package engine
 
+import "errors"
+
 // PlaylistSource is one URL from downloads.conf.
 type PlaylistSource struct {
 	Index int
@@ -74,6 +76,12 @@ type (
 		Height    int
 		AudioKbps int
 	}
+	// EvAudio says where the best audio step of a song is, when the setting asks for it: Word is
+	// AudioWaiting, AudioFetching, AudioDone or AudioFailed.
+	EvAudio struct {
+		Entry int
+		Word  string
+	}
 	// EvProgress carries a download progress tick.
 	EvProgress struct {
 		Entry      int
@@ -95,3 +103,19 @@ type (
 	// EvIdle is sent when the queue is empty and no worker is busy.
 	EvIdle struct{}
 )
+
+// The words of EvAudio.
+const (
+	// AudioWaiting is a song whose official video is not downloaded yet, so the best audio waits.
+	AudioWaiting = "waiting"
+	// AudioFetching is a song whose best audio is being fetched and put on the video.
+	AudioFetching = "fetching"
+	// AudioDone is a song whose video now has the best audio.
+	AudioDone = "done"
+	// AudioFailed is a song whose video stays as it was downloaded.
+	AudioFailed = "not done"
+)
+
+// ErrBestAudioSkipped is what Options.AfterDownload returns when it did not try the best audio and has said why
+// in the log: the engine does not log it again, and the song only shows the step as not done.
+var ErrBestAudioSkipped = errors.New("best audio skipped")

@@ -20,5 +20,7 @@ type Song struct {
 	// Height is the picture height and AudioKbps the audio rate of the version, 0 when not known.
 	Height    int    `json:"height"`
 	AudioKbps int    `json:"audioKbps"`
+	// Audio is where the best audio step is: "waiting", "fetching", "done", "not done", or "" when the song has none.
+	Audio string `json:"audio"`
 	Error     string `json:"error"`
 }

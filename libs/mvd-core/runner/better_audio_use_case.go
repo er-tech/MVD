@@ -10,6 +10,7 @@ import (
 
 	"youtube-downloader/libs/mvd-core/appdir"
 	"youtube-downloader/libs/mvd-core/audiofix"
+	"youtube-downloader/libs/mvd-core/engine"
 	"youtube-downloader/libs/mvd-core/musicfixer"
 	"youtube-downloader/libs/mvd-core/ytdlp/fetch"
 )
@@ -82,7 +83,7 @@ func notDone(reason string) func(ctx context.Context, videoID string, files []st
 	return func(_ context.Context, _ string, _ []string, log func(string, ...any)) error {
 		log("[better audio] not done: %s; the video stays as it was downloaded", reason)
 
-		return nil
+		return engine.ErrBestAudioSkipped
 	}
 }
 

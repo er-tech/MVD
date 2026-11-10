@@ -20,6 +20,7 @@ const song = (percent = 0): Song => ({
   version:   '',
   height:    0,
   audioKbps: 0,
+  audio:     '',
   error:     '',
 })
 const detail: Detail = {

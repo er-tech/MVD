@@ -19,6 +19,7 @@ const song = (id: string, percent = 0): Song => ({
   version:   '',
   height:    0,
   audioKbps: 0,
+  audio:     '',
   error:     '',
 })
 const state = (): State => ({ revision: 10, sources: [source('p0')], songs: [song('e0'), song('e1')], run: run() })

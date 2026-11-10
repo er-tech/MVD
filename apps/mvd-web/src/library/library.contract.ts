@@ -36,6 +36,8 @@ export interface Song {
   version:   string
   height:    number
   audioKbps: number
+  /** Where the best audio step is: `waiting`, `fetching`, `done`, `not done`, or `` when the song has none. */
+  audio:     string
   error:     string
 }
 

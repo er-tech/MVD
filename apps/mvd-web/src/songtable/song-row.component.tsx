@@ -2,7 +2,7 @@ import { Flex, Text } from '@chakra-ui/react'
 import { memo, useCallback, useEffect, useSyncExternalStore } from 'react'
 import type { Song, Table } from '../library'
 import { countRowDraw } from '../metrics'
-import { ProgressTag, StatusTag, VersionTag } from '../songtags'
+import { AudioTag, ProgressTag, StatusTag, VersionTag } from '../songtags'
 import { rowPadding } from './song-columns.config.ts'
 import type { SongColumn } from './song-columns.config.ts'
 
@@ -13,6 +13,7 @@ const defaultColumns: SongColumn[] = [
   { id: 'title', width: 320 },
   { id: 'status', width: 170 },
   { id: 'version', width: 100 },
+  { id: 'audio', width: 130 },
   { id: 'progress', width: 160 },
 ]
 
@@ -75,6 +76,7 @@ export const SongRow = memo(function SongRow ({ id, songs, top, height, selected
       case 'title': { return cell(column, <Text truncate>{song.title}</Text>) }
       case 'status': { return cell(column, <StatusTag song={song} />) }
       case 'version': { return cell(column, <VersionTag song={song} />) }
+      case 'audio': { return cell(column, <AudioTag song={song} />) }
       default: { return cell(column, <ProgressTag song={song} />) }
     }
   }

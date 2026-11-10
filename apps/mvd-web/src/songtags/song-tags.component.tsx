@@ -1,6 +1,6 @@
 import { Spinner, Tag } from '@chakra-ui/react'
 import type { Song } from '../library'
-import { progressLabels, progressOf, progressPalette, qualityOf, tonePalette, versionLook } from './song-tags.algorithm.ts'
+import { audioLook, progressLabels, progressOf, progressPalette, qualityOf, tonePalette, versionLook } from './song-tags.algorithm.ts'
 
 function Pill ({ palette, children }: { palette: string, children: React.ReactNode }) {
   return (
@@ -47,4 +47,18 @@ export function QualityTag ({ song }: { song: Pick<Song, 'height' | 'audioKbps'>
   const quality = qualityOf(song)
 
   return quality === '' ? null : <Pill palette='cyan'>{quality}</Pill>
+}
+
+/** The best audio step of a song as a tag, with a spinner while it is fetched, nothing when the song has none. */
+export function AudioTag ({ song }: { song: Pick<Song, 'audio'> }) {
+  const look = audioLook(song.audio)
+
+  return look === undefined
+    ? null
+    : (
+        <Pill palette={look.palette}>
+          {song.audio === 'fetching' && <Spinner size='xs' me='1' aria-label='Fetching the best audio' />}
+          {look.label}
+        </Pill>
+      )
 }

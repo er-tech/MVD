@@ -8,7 +8,7 @@ import { SongTable } from './song-table.component.tsx'
 afterEach(cleanup)
 
 const song = (id: string, artist: string, title: string): Song => ({
-  id, sourceId: 'p0', position: 1, artist, title, status: 'waiting', tone: 'dim', percent: 0, speed: 0, version: '', height: 0, audioKbps: 0, error: '',
+  id, sourceId: 'p0', position: 1, artist, title, status: 'waiting', tone: 'dim', percent: 0, speed: 0, version: '', height: 0, audioKbps: 0, audio: '', error: '',
 })
 
 function shown (selected?: string) {
@@ -48,7 +48,7 @@ describe('SongTable', () => {
 
   it('has a handle to resize each column', () => {
     shown()
-    expect(screen.getAllByRole('separator')).toHaveLength(7)
+    expect(screen.getAllByRole('separator')).toHaveLength(8)
   })
 
   it('moves the choice down and up with the arrows, in the order shown', () => {

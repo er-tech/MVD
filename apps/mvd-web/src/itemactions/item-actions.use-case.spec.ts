@@ -25,7 +25,7 @@ function deps (links: { label: string, url: string }[] = []) {
   backend.answers.detail = { kind: 'song', id: 's1', title: 'T', fields: [], links, log: [] }
   const store = new LibraryStore()
   store.sources.replace([{ id: 'p0', url: 'https://www.youtube.com/playlist?list=PL', title: 'List', status: 'listed', error: '', position: 1, songs: 1, done: 0, failed: 0, finding: 0 }])
-  store.songs.replace([{ id: 's1', sourceId: 'p0', position: 1, artist: 'Double You', title: 'Part Time Lover', status: 'waiting', tone: 'dim', percent: 0, speed: 0, version: '', height: 0, audioKbps: 0, error: '' }])
+  store.songs.replace([{ id: 's1', sourceId: 'p0', position: 1, artist: 'Double You', title: 'Part Time Lover', status: 'waiting', tone: 'dim', percent: 0, speed: 0, version: '', height: 0, audioKbps: 0, audio: '', error: '' }])
 
   return { backend, store, notify: vi.fn<(message: string) => void>(), remove: vi.fn<(id: string) => void>() } satisfies ItemActionDeps
 }
