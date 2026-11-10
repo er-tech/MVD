@@ -77,7 +77,7 @@ type (
 		AudioKbps int
 	}
 	// EvAudio says where the best audio step of a song is, when the setting asks for it: Word is
-	// AudioWaiting, AudioFetching, AudioDone or AudioFailed.
+	// AudioWaiting, AudioReady, AudioFetching, AudioDone or AudioFailed.
 	EvAudio struct {
 		Entry int
 		Word  string
@@ -108,6 +108,8 @@ type (
 const (
 	// AudioWaiting is a song whose official video is not downloaded yet, so the best audio waits.
 	AudioWaiting = "waiting"
+	// AudioReady is a song whose version is chosen and whose best audio rate is known: EvQuality gives it.
+	AudioReady = "ready"
 	// AudioFetching is a song whose best audio is being fetched and put on the video.
 	AudioFetching = "fetching"
 	// AudioDone is a song whose video now has the best audio.

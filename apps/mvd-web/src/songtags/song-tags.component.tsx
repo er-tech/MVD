@@ -50,8 +50,8 @@ export function QualityTag ({ song }: { song: Pick<Song, 'height' | 'audioKbps'>
 }
 
 /** The best audio step of a song as a tag, with a spinner while it is fetched, nothing when the song has none. */
-export function AudioTag ({ song }: { song: Pick<Song, 'audio'> }) {
-  const look = audioLook(song.audio)
+export function AudioTag ({ song }: { song: Pick<Song, 'audio' | 'audioKbps'> }) {
+  const look = audioLook(song.audio, song.audioKbps)
 
   return look === undefined
     ? null

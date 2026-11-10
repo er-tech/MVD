@@ -79,6 +79,10 @@ type Options struct {
 	// improve them in place (the best audio put on the video, say). A failure is only
 	// logged: the video as downloaded is kept.
 	AfterDownload func(ctx context.Context, videoID string, files []string, log func(format string, args ...any)) error
+	// ProbeQuality, when set, says how good the version chosen for a song is (the height of its picture and the
+	// bitrate of its sound, 0 when not known) without downloading it, so the list can show it as soon as the
+	// version is chosen.
+	ProbeQuality func(videoID string) (height, audioKbps int, err error)
 	Workers       int    // the most videos in flight across all playlists; fewer while the service limits requests
 	LogPath       string // "" disables the log file
 	Resolver      OfficialResolver
@@ -99,6 +103,8 @@ type Options struct {
 }
 
 type engineEntry struct {
+	// audioWord is the last word sent in an EvAudio for the entry, "" when none.
+	audioWord string
 	info     EntryInfo
 	raw      ytdlp.PlaylistEntry
 	state    EntryState
@@ -149,6 +155,8 @@ type Engine struct {
 	// download queue (queue), each with its own workers.
 	nameQueue *taskQueue
 	pickQueue *taskQueue
+	// probeQueue holds the songs whose chosen version waits for its quality to be read.
+	probeQueue *taskQueue
 	queue     *taskQueue
 	logger    *runLogger
 	drained   chan struct{} // pinged when the queue empties
@@ -180,6 +188,7 @@ func New(opts Options) (*Engine, error) {
 		events:         make(chan interface{}, 1024),
 		nameQueue:      newTaskQueue(),
 		pickQueue:      newTaskQueue(),
+		probeQueue:     newTaskQueue(),
 		queue:          newTaskQueue(),
 		logger:         logger,
 		drained:        make(chan struct{}, 1),
@@ -316,6 +325,7 @@ func (e *Engine) Run(ctx context.Context) {
 	}
 	naming := pool(nameWorkers, e.nameQueue, e.nameStage)
 	picking := pool(pickWorkers, e.pickQueue, e.pickStage)
+	probing := pool(qualityProbers, e.probeQueue, e.probeStage)
 	downloading := pool(maxDownloaders, e.queue, func(ctx context.Context, id int) {
 		e.process(ctx, id)
 		e.finishOne()
@@ -361,6 +371,8 @@ func (e *Engine) Run(ctx context.Context) {
 	naming.Wait()
 	e.pickQueue.Close()
 	picking.Wait()
+	e.probeQueue.Close()
+	probing.Wait()
 	e.queue.Close()
 	downloading.Wait()
 	<-coordDone
@@ -678,6 +690,7 @@ func (e *Engine) advance(en *engineEntry) {
 		e.finishOne()
 		return
 	}
+	e.announce(en)
 	if e.opts.PlanOnly || e.opts.HoldForReview {
 		e.setState(en, StatePlanned, "")
 		e.finishOne()
@@ -807,10 +820,10 @@ func (e *Engine) process(ctx context.Context, id int) {
 	}
 
 	e.mu.Lock()
-	wantsAudio := e.opts.AfterDownload != nil && en.official
+	wantsAudio := e.opts.AfterDownload != nil && en.official && en.audioWord == ""
 	e.mu.Unlock()
 	if wantsAudio {
-		e.emit(EvAudio{Entry: eid, Word: AudioWaiting})
+		e.setAudio(en, AudioWaiting)
 	}
 
 	immediateUsed := false
@@ -1008,14 +1021,14 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 		e.mu.Unlock()
 		if e.opts.AfterDownload != nil && official && len(files) > 0 {
 			logf := func(format string, args ...any) { e.log(pl, eid, format, args...) }
-			e.emit(EvAudio{Entry: eid, Word: AudioFetching})
+			e.setAudio(en, AudioFetching)
 			if afterErr := e.opts.AfterDownload(ctx, target, files, logf); afterErr != nil {
 				if !errors.Is(afterErr, ErrBestAudioSkipped) {
 					e.log(pl, eid, "[better audio] %v", afterErr)
 				}
-				e.emit(EvAudio{Entry: eid, Word: AudioFailed})
+				e.setAudio(en, AudioFailed)
 			} else {
-				e.emit(EvAudio{Entry: eid, Word: AudioDone})
+				e.setAudio(en, AudioDone)
 			}
 		}
 	}
@@ -1189,4 +1202,56 @@ func partsInFlight(p fetch.Progress, concurrentFragments int) int {
 		left = 1
 	}
 	return min(concurrentFragments, left)
+}
+
+// qualityProbers is how many songs have the quality of their chosen version read at once.
+const qualityProbers = 4
+
+// setAudio notes and sends where the best audio step of an entry is.
+func (e *Engine) setAudio(en *engineEntry, word string) {
+	e.mu.Lock()
+	en.audioWord = word
+	e.mu.Unlock()
+	e.emit(EvAudio{Entry: en.info.ID, Word: word})
+}
+
+// announce tells what a chosen version will be as soon as it is chosen, before its turn to download comes: the
+// best audio step waits for it, and its quality is read in the background.
+func (e *Engine) announce(en *engineEntry) {
+	e.mu.Lock()
+	wantsAudio := e.opts.AfterDownload != nil && en.official
+	e.mu.Unlock()
+	if wantsAudio {
+		e.setAudio(en, AudioWaiting)
+	}
+	if e.opts.ProbeQuality != nil {
+		e.probeQueue.Push(en.info.ID)
+	}
+}
+
+// probeStage reads the quality of the version chosen for a song and shows it, unless the download has begun
+// and says it better. A version whose formats cannot be read shows nothing.
+func (e *Engine) probeStage(_ context.Context, id int) {
+	e.mu.Lock()
+	en := e.entries[id]
+	target := en.targetID
+	e.mu.Unlock()
+	if target == "" {
+		return
+	}
+	height, kbps, err := e.opts.ProbeQuality(target)
+	if err != nil || (height == 0 && kbps == 0) {
+		return
+	}
+	e.mu.Lock()
+	begun := en.state == StateDownloading || en.state == StateMerging || en.state == StateDone
+	official := en.official
+	e.mu.Unlock()
+	if begun {
+		return
+	}
+	e.emit(EvQuality{Entry: en.info.ID, Height: height, AudioKbps: kbps})
+	if e.opts.AfterDownload != nil && official && kbps > 0 {
+		e.setAudio(en, AudioReady)
+	}
 }

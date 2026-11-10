@@ -27,6 +27,7 @@ describe('audioLook', () => {
   it('names each step of the best audio, and none when the song has none', () => {
     expect(audioLook('fetching')?.label).toBe('Fetching')
     expect(audioLook('done')?.label).toBe('On the video')
+    expect(audioLook('ready', 256)?.label).toBe('256 kbps')
     expect(audioLook('')).toBeUndefined()
   })
 })
