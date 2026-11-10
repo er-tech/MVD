@@ -142,7 +142,7 @@ func (s *State) Apply(ev interface{}) int {
 			s.retried++
 		}
 		en.State = e.State
-		if e.State == engine.StateQueued || e.State == engine.StateAccepted || e.State == engine.StateResolving || e.State == engine.StateDownloading || e.State == engine.StateMerging {
+		if e.State == engine.StateQueued || e.State == engine.StateAccepted || e.State == engine.StateNamed || e.State == engine.StateResolving || e.State == engine.StatePicking || e.State == engine.StateDownloading || e.State == engine.StateMerging {
 			s.Idle = false // there is work again, such as songs tried again
 		}
 		en.TargetID = e.TargetID
@@ -250,9 +250,9 @@ func (s *State) Tally() Tally {
 		}
 		t.Total++
 		switch en.State {
-		case engine.StateQueued:
+		case engine.StateQueued, engine.StateNamed:
 			t.Queued++
-		case engine.StateResolving, engine.StateDownloading, engine.StateMerging:
+		case engine.StateResolving, engine.StatePicking, engine.StateDownloading, engine.StateMerging:
 			t.Running++
 			if en.State == engine.StateDownloading {
 				t.Downloading++
@@ -295,7 +295,7 @@ func (s *State) PlaylistTally(pl *Playlist) (finished, failed, active int) {
 			finished++
 		case en.State.Finished():
 			finished++
-		case en.State != engine.StateQueued && en.State != engine.StateAccepted:
+		case en.State != engine.StateQueued && en.State != engine.StateNamed && en.State != engine.StateAccepted:
 			active++
 		}
 	}

@@ -40,9 +40,9 @@ func GroupOf(en *runstate.Entry) string {
 		return GroupOriginal
 	case engine.StateAccepted:
 		return GroupAccepted
-	case engine.StateQueued:
+	case engine.StateQueued, engine.StateNamed:
 		return GroupWaiting
-	case engine.StateResolving, engine.StateDownloading, engine.StateMerging:
+	case engine.StateResolving, engine.StatePicking, engine.StateDownloading, engine.StateMerging:
 		return GroupDownloading
 	case engine.StateDone:
 		return GroupSaved

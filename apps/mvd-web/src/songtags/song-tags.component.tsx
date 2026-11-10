@@ -10,15 +10,18 @@ function Pill ({ palette, children }: { palette: string, children: React.ReactNo
   )
 }
 
-/** The status of a song as a tag coloured by its tone, with a spinner while the song is being found. */
+/** The statuses of a song a worker is busy with now, the only ones that show a spinner. */
+const busyStatuses = new Set(['naming', 'picking'])
+
+/** The status of a song as a tag coloured by its tone, with a spinner only while a worker is naming or picking it. */
 export function StatusTag ({ song }: { song: Pick<Song, 'status' | 'tone'> }) {
   if (song.status === '') {
     return null
   }
 
   return (
-    <Pill palette={tonePalette[song.tone]}>
-      {song.status === 'finding' && <Spinner size='xs' me='1' aria-label='Looking for the video' />}
+    <Pill palette={song.status === 'picking' ? 'teal' : tonePalette[song.tone]}>
+      {busyStatuses.has(song.status) && <Spinner size='xs' me='1' aria-label={song.status === 'naming' ? 'Naming the song' : 'Looking for the video'} />}
       {song.status}
     </Pill>
   )

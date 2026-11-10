@@ -27,35 +27,11 @@ export const songColumns: ColumnDef<SongLine>[] = [
 /** The columns that have a filter in their header. */
 export const filterColumnIds: readonly string[] = ['status', 'version', 'progress']
 
-/** The columns that stay in view when the table scrolls sideways, in order. */
-export const stickyColumnIds: readonly string[] = ['source', 'position', 'artist', 'title']
-
 /** The space left of the first column, in pixels. */
 export const rowPadding = 12
 
-/** One column as the rows draw it: its width, and how far from the left edge it sticks when it is a sticky one. */
+/** One column as the rows draw it: its id and width in pixels. */
 export interface SongColumn {
   id:    string
   width: number
-  left?: number
-}
-
-/**
- * Where each shown column goes: its width and, for the sticky ones, the distance from the left edge where it sticks,
- * which is the place it has when the table is not scrolled.
- *
- * @param widths - the shown columns, in order, with their widths.
- */
-export function placeColumns (widths: readonly { id: string, width: number }[]): SongColumn[] {
-  let left = rowPadding
-
-  return widths.map(({ id, width }) => {
-    if (!stickyColumnIds.includes(id)) {
-      return { id, width }
-    }
-    const column = { id, width, left }
-    left += width
-
-    return column
-  })
 }

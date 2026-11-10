@@ -13,7 +13,7 @@ interface DetailsPanelProps {
 }
 
 /** The words of a song that is being worked on, so the last line of its log is a step that goes on. */
-const workingStatuses = new Set(['finding', 'starting', 'downloading', 'joining'])
+const workingStatuses = new Set(['naming', 'picking', 'starting', 'downloading', 'joining'])
 
 /** The fields that the tags above them already say, so the list leaves them out. */
 const tagFields = new Set(['Status', 'Version', 'Progress'])

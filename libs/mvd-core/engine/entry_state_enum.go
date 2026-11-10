@@ -26,6 +26,10 @@ const (
 	// StateAccepted is a song the person accepted: it waits in the queue for the downloads to start,
 	// and shows as downloading once a downloader takes it.
 	StateAccepted
+	// StateNamed is a song a naming worker is done with: it waits for a picking worker.
+	StateNamed
+	// StatePicking is a song a picking worker is searching the version of now.
+	StatePicking
 )
 
 // String returns the lower-case name of the state, or "unknown" for a value that has none.
@@ -53,6 +57,10 @@ func (s EntryState) String() string {
 		return "skipped"
 	case StateAccepted:
 		return "accepted"
+	case StateNamed:
+		return "named"
+	case StatePicking:
+		return "picking"
 	}
 	return "unknown"
 }

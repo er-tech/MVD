@@ -12,7 +12,7 @@ import { songMatches } from './fuzzy-match.algorithm.ts'
 import { progressLabels, versionLook } from '../songtags'
 import { ColumnFilter } from './column-filter.component.tsx'
 import type { FilterOption } from './column-filter.component.tsx'
-import { filterColumnIds, placeColumns, rowPadding, songColumns } from './song-columns.config.ts'
+import { filterColumnIds, rowPadding, songColumns } from './song-columns.config.ts'
 import type { SongLine } from './song-columns.config.ts'
 import { SongRow } from './song-row.component.tsx'
 import { visibleIds } from './visible-ids.algorithm.ts'
@@ -103,7 +103,7 @@ export function SongTable ({ songs, sources, sourceId, selected, onSelect, entri
     getSortedRowModel:      getSortedRowModel(),
   })
   const rows = table.getRowModel().rows
-  const columns = placeColumns(table.getVisibleLeafColumns().map(column => ({ id: column.id, width: column.getSize() })))
+  const columns = table.getVisibleLeafColumns().map(column => ({ id: column.id, width: column.getSize() }))
   const scrollerRef = useRef<HTMLDivElement>(null)
   const virtual = useVirtualizer({
     count:            rows.length,
@@ -164,18 +164,15 @@ export function SongTable ({ songs, sources, sourceId, selected, onSelect, entri
           color='fg.muted'
           textTransform='uppercase'
         >
-          {table.getHeaderGroups()[0]?.headers.map((header, index) => {
+          {table.getHeaderGroups()[0]?.headers.map(header => {
             const sort = header.column.getIsSorted()
-            const left = columns[index].left
 
             return (
               <Flex
                 key={header.id}
                 role='columnheader'
                 aria-sort={sort === 'asc' ? 'ascending' : (sort === 'desc' ? 'descending' : 'none')}
-                position={left === undefined ? 'relative' : 'sticky'}
-                zIndex={left === undefined ? undefined : 1}
-                bg={left === undefined ? undefined : 'bg'}
+                position='relative'
                 align='center'
                 gap='1'
                 py='1'
@@ -183,7 +180,7 @@ export function SongTable ({ songs, sources, sourceId, selected, onSelect, entri
                 flexShrink={0}
                 cursor='pointer'
                 userSelect='none'
-                style={{ width: header.getSize(), left }}
+                style={{ width: header.getSize() }}
                 onClick={header.column.getToggleSortingHandler()}
               >
                 <Text truncate>{String(header.column.columnDef.header)}</Text>

@@ -8,9 +8,9 @@ import type { SongColumn } from './song-columns.config.ts'
 
 /** The columns when the table gives none. */
 const defaultColumns: SongColumn[] = [
-  { id: 'position', width: 56, left: rowPadding },
-  { id: 'artist', width: 220, left: rowPadding + 56 },
-  { id: 'title', width: 320, left: rowPadding + 276 },
+  { id: 'position', width: 56 },
+  { id: 'artist', width: 220 },
+  { id: 'title', width: 320 },
   { id: 'status', width: 170 },
   { id: 'version', width: 100 },
   { id: 'progress', width: 160 },
@@ -23,7 +23,7 @@ interface SongRowProps {
   height:          number
   selected:        boolean
   onSelect:        (id: string) => void
-  /** The shown columns, in order, with their widths in pixels and where the sticky ones stick. */
+  /** The shown columns, in order, with their widths in pixels. */
   columns?:        readonly SongColumn[]
   /** Draw the row with the tint of the odd rows. */
   striped?:        boolean
@@ -33,8 +33,7 @@ interface SongRowProps {
 
 /**
  * One song. It listens to its own row only, so a change to another song does not draw it again, and
- * a change to this song draws nothing else. The columns that stay in view when the table scrolls sideways
- * have the colour of the row, so what scrolls under them does not show.
+ * a change to this song draws nothing else.
  *
  * @param props.id - the ID of the song.
  * @param props.songs - where the songs are.
@@ -55,7 +54,6 @@ export const SongRow = memo(function SongRow ({ id, songs, top, height, selected
     return null
   }
   const background = selected ? 'blue.subtle' : (striped ? 'bg.muted' : 'bg')
-  const lastSticky = columns.findLast(column => column.left !== undefined)?.id
   const cell = (column: SongColumn, content: React.ReactNode) => (
     <Flex
       key={column.id}
@@ -64,9 +62,7 @@ export const SongRow = memo(function SongRow ({ id, songs, top, height, selected
       pe='3'
       minW='0'
       overflow='hidden'
-      style={{ width: column.width, ...(column.left !== undefined && { position: 'sticky', left: column.left, zIndex: 1 }) }}
-      bg={column.left === undefined ? undefined : background}
-      borderEndWidth={column.id === lastSticky ? '1px' : undefined}
+      style={{ width: column.width }}
     >
       {content}
     </Flex>
