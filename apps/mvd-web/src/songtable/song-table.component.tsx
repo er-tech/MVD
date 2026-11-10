@@ -109,7 +109,13 @@ export function SongTable ({ songs, sources, sourceId, selected, onSelect, entri
     getSortedRowModel:      getSortedRowModel(),
   })
   const rows = table.getRowModel().rows
-  const columns = table.getVisibleLeafColumns().map(column => ({ id: column.id, width: column.getSize() }))
+  // The same array until a width or the shown columns change, so a scroll does not draw the rows that stay in view.
+  const sizing = table.getState().columnSizing
+  const columns = useMemo(
+    () => table.getVisibleLeafColumns().map(column => ({ id: column.id, width: column.getSize() })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sizing and sourceId are what change the columns
+    [table, sizing, sourceId],
+  )
   const scrollerRef = useRef<HTMLDivElement>(null)
   const virtual = useVirtualizer({
     count:            rows.length,
