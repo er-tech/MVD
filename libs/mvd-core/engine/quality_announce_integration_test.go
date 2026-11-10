@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 func TestTheQualityOfAChosenVersionIsShownBeforeAnythingIsDownloaded(t *testing.T) {
@@ -16,16 +17,27 @@ func TestTheQualityOfAChosenVersionIsShownBeforeAnythingIsDownloaded(t *testing.
 	done := make(chan struct{})
 	go func() { eng.Run(ctx); close(done) }()
 	events := collect(t, eng)
-	cancel()
-	<-done
 
-	read := 0
+	// The qualities are read in the background, so they can come after the run is idle.
+	timeout := time.After(10 * time.Second)
+	read := false
 	for _, ev := range events {
 		if q, ok := ev.(EvQuality); ok && q.Height == 1080 && q.AudioKbps == 256 {
-			read++
+			read = true
 		}
 	}
-	if read == 0 {
-		t.Fatal("no quality was shown for a chosen version in a plan-only run")
+	for !read {
+		select {
+		case ev := <-eng.Events():
+			if q, ok := ev.(EvQuality); ok && q.Height == 1080 && q.AudioKbps == 256 {
+				read = true
+			}
+		case <-timeout:
+			cancel()
+			<-done
+			t.Fatal("no quality was shown for a chosen version in a plan-only run")
+		}
 	}
+	cancel()
+	<-done
 }
