@@ -122,7 +122,7 @@ func sourceRow(st *runstate.State, pl *runstate.Playlist) library.Source {
 func findingIn(st *runstate.State, pl *runstate.Playlist) int {
 	finding := 0
 	for _, id := range pl.Entries {
-		if en := st.Entry(id); en != nil && en.State == engine.StateResolving {
+		if en := st.Entry(id); en != nil && (en.State == engine.StateResolving || en.State == engine.StatePicking) {
 			finding++
 		}
 	}

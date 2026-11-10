@@ -41,7 +41,7 @@ func (e *Engine) listEntries(ctx context.Context, src PlaylistSource) ([]ytdlp.P
 func (e *Engine) findTrack(ctx context.Context, en *engineEntry) bool {
 	pl, eid := en.info.Playlist, en.info.ID
 
-	e.setState(en, StateResolving, "")
+	e.setState(en, StatePicking, "")
 	id, official, err := e.opts.Tracks.Find(ctx, *en.track, func(format string, a ...interface{}) {
 		e.log(pl, eid, "%s", fmt.Sprintf(format, a...))
 	})

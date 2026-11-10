@@ -8,7 +8,7 @@ type Song struct {
 	Position int    `json:"position"`
 	Artist   string `json:"artist"`
 	Title    string `json:"title"`
-	// Status is the word that says where the song is ("waiting", "finding", "official found"...)
+	// Status is the word that says where the song is ("waiting", "naming", "picking", "official found"...)
 	// and Tone how to colour it: "dim", "focus", "highlight", "success" or "error".
 	Status string `json:"status"`
 	Tone   string `json:"tone"`

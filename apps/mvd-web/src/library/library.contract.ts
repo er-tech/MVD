@@ -26,7 +26,7 @@ export interface Song {
   position:  number
   artist:    string
   title:     string
-  /** The word that says where the song is: `waiting`, `finding`, `official found`... */
+  /** The word that says where the song is: `waiting`, `naming`, `picking`, `official found`... */
   status:    string
   tone:      Tone
   percent:   number

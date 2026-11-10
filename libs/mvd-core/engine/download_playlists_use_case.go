@@ -621,6 +621,7 @@ func (e *Engine) nameStage(ctx context.Context, id int) {
 			en.named = &namedSong{artist: identification.Artist, title: identification.Title, album: identification.Album}
 		}
 		e.mu.Unlock()
+		e.setState(en, StateNamed, "")
 		e.pickQueue.Push(id)
 	default:
 		// Nothing to look up. With a resolver that means the upload says it is the
@@ -651,6 +652,7 @@ func (e *Engine) pickStage(ctx context.Context, id int) {
 		return
 	}
 
+	e.setState(en, StatePicking, "")
 	switch {
 	case en.track != nil:
 		if !e.findTrack(ctx, en) {

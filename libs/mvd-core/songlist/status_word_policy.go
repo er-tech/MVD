@@ -10,10 +10,12 @@ import (
 // StatusWord is the word that says where a song is, and the tone it carries.
 func StatusWord(en *runstate.Entry) (word string, tone Tone) {
 	switch en.State {
-	case engine.StateQueued:
+	case engine.StateQueued, engine.StateNamed:
 		return "waiting", ToneDim
 	case engine.StateResolving:
-		return "finding", ToneFocus
+		return "naming", ToneFocus
+	case engine.StatePicking:
+		return "picking", ToneFocus
 	case engine.StateDownloading:
 		if en.Total > 0 {
 			return "downloading", ToneHighlight
