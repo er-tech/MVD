@@ -19,16 +19,20 @@ export interface Backend {
   getDetail: (kind: 'source' | 'song', id: string) => Promise<Detail>
 
   /** Put a link in the list and start to load it. */
-  addSource:    (url: string) => Promise<void>
-  removeSource: (id: string) => Promise<void>
+  addSource:      (url: string) => Promise<void>
+  /** Find the songs of an artist, an album or one song by name and put them in the list. The artist is needed. */
+  addMusicSearch: (artist: string, album: string, song: string) => Promise<void>
+  /** Give a song another video, from a YouTube link or its ID. */
+  replaceVideo:   (id: string, text: string) => Promise<void>
+  removeSource:   (id: string) => Promise<void>
   /** Put a source at a place of the list, counted from 1. */
-  moveSource:   (id: string, to: number) => Promise<void>
+  moveSource:     (id: string, to: number) => Promise<void>
   /** Download what is ready, and each song that becomes ready later. */
-  start:        () => Promise<void>
-  pause:        () => Promise<void>
-  resume:       () => Promise<void>
+  start:          () => Promise<void>
+  pause:          () => Promise<void>
+  resume:         () => Promise<void>
   /** Queue the failed songs again and say how many. */
-  retryFailed:  () => Promise<number>
+  retryFailed:    () => Promise<number>
 
   newList:         () => Promise<void>
   /** Ask for a file and open it. Resolves with the path, `` when the person cancelled. */

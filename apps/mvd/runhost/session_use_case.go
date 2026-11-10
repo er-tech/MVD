@@ -10,6 +10,8 @@ import (
 	"youtube-downloader/libs/mvd-core/config"
 	"youtube-downloader/libs/mvd-core/downloadlist"
 	"youtube-downloader/libs/mvd-core/engine"
+	"youtube-downloader/libs/mvd-core/musicsearch"
+	"youtube-downloader/libs/mvd-core/playlisteditor"
 	"youtube-downloader/libs/mvd-core/runstate"
 
 	"github.com/er-tech/MVD/libs/mvd-state/library"
@@ -110,6 +112,52 @@ func (s *Session) AddSource(url string) error {
 	list := s.list
 	s.mu.Unlock()
 	list.SetSources(append(list.Sources(), url))
+
+	return nil
+}
+
+// AddSearch puts the songs of an artist, an album or one song, found by name, in the list.
+//
+// artist is needed. album and song are optional, and a song or an album alone is refused. The error says what
+// to write, or why the list refused it.
+func (s *Session) AddSearch(artist, album, song string) error {
+	query := musicsearch.Query{Artist: artist, Album: album, Song: song}
+	if problem := query.Problem(); problem != "" {
+		return errors.New(problem)
+	}
+
+	return s.AddSource(query.Address())
+}
+
+// ReplaceVideo gives a song another video to download.
+//
+// id is the ID of the song row and text a YouTube video link or its ID. A song that waits for Start keeps the
+// video until it is released. A song that is done, failed or skipped downloads the new video at once. The error
+// says what to write, or that the song cannot take another video now.
+func (s *Session) ReplaceVideo(id, text string) error {
+	entry, found := parseID(songPrefix, id)
+	video, isVideo := playlisteditor.VideoID(strings.TrimSpace(text))
+	if !isVideo {
+		return errors.New("write a YouTube video link or its ID")
+	}
+	s.cmd.Lock()
+	defer s.cmd.Unlock()
+	s.mu.Lock()
+	eng := s.eng
+	var en *runstate.Entry
+	if s.state != nil && found {
+		en = s.state.Entry(entry)
+	}
+	waiting := en != nil && en.State == engine.StatePlanned && !s.started
+	s.mu.Unlock()
+	switch {
+	case eng == nil || en == nil:
+		return errors.New("that song is not in the list")
+	case waiting:
+		s.release.choose(entry, video)
+	case !eng.Swap(entry, video):
+		return errors.New("this song cannot take another video now: wait until it is found or finished")
+	}
 
 	return nil
 }

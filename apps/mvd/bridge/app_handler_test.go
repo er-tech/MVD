@@ -1,11 +1,11 @@
 package bridge
 
 import (
-	"slices"
 	"context"
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -31,6 +31,7 @@ func (e *stubEngine) AddSource(url string) (engine.PlaylistSource, bool) {
 }
 func (e *stubEngine) RemoveSource(int) bool            { return true }
 func (e *stubEngine) Release(int, string) bool         { return true }
+func (e *stubEngine) Swap(int, string) bool            { return true }
 func (e *stubEngine) ReleaseAll() int                  { return 0 }
 func (e *stubEngine) Pause()                           {}
 func (e *stubEngine) Resume()                          {}

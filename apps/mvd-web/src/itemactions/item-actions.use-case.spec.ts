@@ -27,7 +27,7 @@ function deps (links: { label: string, url: string }[] = []) {
   store.sources.replace([{ id: 'p0', url: 'https://www.youtube.com/playlist?list=PL', title: 'List', status: 'listed', error: '', position: 1, songs: 1, done: 0, failed: 0, finding: 0 }])
   store.songs.replace([{ id: 's1', sourceId: 'p0', position: 1, artist: 'Double You', title: 'Part Time Lover', status: 'waiting', tone: 'dim', percent: 0, speed: 0, version: '', height: 0, audioKbps: 0, audio: '', error: '' }])
 
-  return { backend, store, notify: vi.fn<(message: string) => void>(), remove: vi.fn<(id: string) => void>() } satisfies ItemActionDeps
+  return { backend, store, notify: vi.fn<(message: string) => void>(), remove: vi.fn<(id: string) => void>(), replace: vi.fn<(id: string) => void>() } satisfies ItemActionDeps
 }
 
 const original = { label: 'Video in the playlist', url: 'https://www.youtube.com/watch?v=o' }
@@ -95,6 +95,14 @@ describe('menuEntriesOf', () => {
       ['Copy original', 'Ctrl+Shift+C', false], ['Open original', 'Shift+Enter', false],
       ['Copy best audio', 'Ctrl+Alt+C', true], ['Open best audio', 'Ctrl+Alt+Enter', true],
       ['Copy song details', 'Ctrl+Alt+Shift+C', false],
+      ['Replace video…', undefined, undefined],
     ])
+  })
+
+  it('opens the window that replaces the video of the song', async () => {
+    const all = deps([original, official])
+    const entries = await menuEntriesOf(all, 'song', 's1')
+    entries.at(-1)?.run()
+    expect(all.replace).toHaveBeenCalledWith('s1')
   })
 })

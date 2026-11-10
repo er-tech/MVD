@@ -8,11 +8,13 @@ import type { Selection } from '../details'
 import { copyItem, menuEntriesOf, openItem } from '../itemactions'
 import type { ItemActionDeps, SongPick } from '../itemactions'
 import { LibraryStore } from '../library'
+import type { Song } from '../library'
 import { connectLibrary } from '../librarysync'
 import { MetricsBar, usePageMetrics } from '../metrics'
 import { PreferencesModal } from '../preferences'
 import { QuitQuestionModal } from '../quitquestion'
 import { RecoveryModal } from '../recovery'
+import { ReplaceVideoModal } from '../replacevideo'
 import { ShortcutsModal } from '../shortcuts'
 import { SongTable } from '../songtable'
 import { SourceList } from '../sourcelist'
@@ -25,6 +27,9 @@ import { DropOverlay } from './drop-overlay.component.tsx'
 import { useItemKeys } from './use-item-keys.hook.ts'
 import { useLinkInput } from './use-link-input.hook.ts'
 import { useTools } from './use-tools.hook.ts'
+
+/** The artist and title of a song, for a window that names it. */
+const songName = (song: Song | undefined): string => (song === undefined ? '' : `${song.artist} - ${song.title}`)
 
 /**
  * The whole page: the toolbar, the sources on the left, the songs in the middle, the details of the
@@ -43,6 +48,7 @@ export function App ({ backend }: { backend: Backend }) {
   const [sourceId, setSourceId] = useState<string | undefined>()
   const [modal, setModal] = useState<ModalName | undefined>()
   const [notice, setNotice] = useState('')
+  const [replacing, setReplacing] = useState<string | undefined>()
   const [recovery, setRecovery] = useState<ListInfo | undefined>()
 
   useEffect(() => connectLibrary(backend, store), [backend, store])
@@ -139,6 +145,10 @@ export function App ({ backend }: { backend: Backend }) {
     remove: id => {
       void removeSource(id)
     },
+    replace: id => {
+      setReplacing(id)
+      setModal('replace')
+    },
   }), [backend, store, removeSource])
   const copySelected = useCallback((chosen: Selection, pick: SongPick = 'official') => {
     void copyItem(itemDeps, chosen.kind, chosen.id, pick)
@@ -224,6 +234,12 @@ export function App ({ backend }: { backend: Backend }) {
       </Flex>
       {hovering && <DropOverlay />}
       <AddSourceModal open={modal === 'add'} backend={backend} onClose={closeModal} />
+      <ReplaceVideoModal
+        songId={modal === 'replace' ? replacing : undefined}
+        name={replacing === undefined ? '' : songName(store.songs.getRow(replacing))}
+        backend={backend}
+        onClose={closeModal}
+      />
       <PreferencesModal open={modal === 'preferences'} backend={backend} onClose={closeModal} />
       <AboutModal open={modal === 'about'} backend={backend} onClose={closeModal} />
       <ShortcutsModal open={modal === 'shortcuts'} onClose={closeModal} />
