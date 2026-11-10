@@ -36,7 +36,7 @@ Wails 2 gives two tools: bound Go methods (typed TypeScript is generated) and ev
 It has a mutex and a revision number that grows with each change. The engine writes to the store.
 Nothing else holds state, and there is no message queue.
 
-**Commands are bound methods.** The page calls `AddSource(url)`, `RemoveSource(id)`, `Start()`,
+**Commands are bound methods.** The page calls `AddSource(url)`, `AddMusicSearch(artist, album, song)`, `ReplaceVideo(id, text)`, `RemoveSource(id)`, `Start()`,
 `Stop()`, `OpenList(path)`, `SaveList(path)`, `SetPreference(key, value)` and the like. Each returns at
 once with a result or a typed error. Slow work goes to the engine and the call does not wait for it.
 
@@ -67,7 +67,7 @@ resyncs. This is the test for "what I see is what was saved".
 - The songs table is virtual (TanStack Virtual): only the visible rows exist.
 - A row never moves by itself. The order changes when the user sorts, not when data arrives.
 - The selection is a state of the page, so an event does not change it.
-- Chakra modals: Add music, Preferences, About, Keyboard shortcuts, Quit, and a line to write.
+- Chakra modals: Add music (a link, or a search by artist, album and song), Replace video (from the song menu), Preferences, About, Keyboard shortcuts, Quit, and a line to write.
 - Native menus come from the Wails 2 menu API and call the same bound methods.
 
 ## The screens (from the old app and the four steps)

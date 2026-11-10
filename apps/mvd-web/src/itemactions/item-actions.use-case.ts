@@ -12,6 +12,8 @@ export interface ItemActionDeps {
   notify:  (message: string) => void
   /** Takes a source out of the list. */
   remove:  (id: string) => void
+  /** Opens the window that gives a song another video. */
+  replace: (id: string) => void
 }
 
 /** The kind of item an action is for. */
@@ -123,7 +125,8 @@ const songGroups: readonly { pick: SongPick, name: string, copyKeys: string, ope
 /**
  * The entries of the right-click menu of an item. A source offers Copy, Open (when its text is an address) and
  * Delete. A song offers, in groups, Copy and Open for the official video, the original and the best audio, and
- * Copy for its details. Every entry is shown, and the ones the song has no video for are disabled.
+ * Copy for its details, then Replace video, to give it another video by hand. Every entry is shown, and the ones the
+ * song has no video for are disabled.
  */
 export async function menuEntriesOf (deps: ItemActionDeps, kind: ItemKind, id: string): Promise<MenuEntry[]> {
   if (kind === 'source') {
@@ -157,6 +160,7 @@ export async function menuEntriesOf (deps: ItemActionDeps, kind: ItemKind, id: s
       })
     }
   }
+  entries.push({ key: 'replace', label: 'Replace video…', separatorBefore: true, run: () => { deps.replace(id) } })
 
   return entries
 }

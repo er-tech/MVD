@@ -150,6 +150,8 @@ export function fakeBackend (): FakeBackend {
     },
     getDetail:            (kind: string, id: string) => answer('getDetail', [kind, id], () => fake.answers.detail),
     addSource:            nothing('addSource'),
+    addMusicSearch:       nothing('addMusicSearch'),
+    replaceVideo:         nothing('replaceVideo'),
     removeSource:         nothing('removeSource'),
     moveSource:           nothing('moveSource'),
     start:                nothing('start'),

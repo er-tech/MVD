@@ -22,6 +22,8 @@ type Engine interface {
 	RemoveSource(playlist int) bool
 	// Release sends a held song to the downloads.
 	Release(entry int, videoID string) bool
+	// Swap gives a song another video to download and says false when the song cannot take one now.
+	Swap(entry int, videoID string) bool
 	// ReleaseAll sends every held song to the downloads and says how many.
 	ReleaseAll() int
 	// Pause holds the downloads that have not begun; Resume lets them go on.

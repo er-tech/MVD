@@ -64,3 +64,38 @@ describe('AddSourceModal', () => {
     expect(screen.queryByRole('textbox')).toBeNull()
   })
 })
+
+async function chooseSearch () {
+  const opened = open()
+  fireEvent.click(screen.getByRole('radio', { name: 'Search by name' }))
+  await screen.findByRole('textbox', { name: /Artist/ })
+
+  return opened
+}
+
+describe('AddSourceModal, search by name', () => {
+  it('needs an artist before it adds', async () => {
+    await chooseSearch()
+    expect(addButton().disabled).toBe(true)
+    fireEvent.change(screen.getByRole('textbox', { name: /Artist/ }), { target: { value: 'Daft Punk' } })
+    expect(addButton().disabled).toBe(false)
+  })
+
+  it('sends the artist, the album and the song and closes', async () => {
+    const { backend, onClose } = await chooseSearch()
+    fireEvent.change(screen.getByRole('textbox', { name: /Artist/ }), { target: { value: 'Daft Punk' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Album' }), { target: { value: 'Discovery' } })
+    fireEvent.click(addButton())
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(backend.calls).toEqual(['addMusicSearch(Daft Punk, Discovery, )'])
+  })
+
+  it('shows the message of a search that Go refused and stays open', async () => {
+    const { backend, onClose } = await chooseSearch()
+    backend.failNext.set('addMusicSearch', 'An album needs its artist')
+    fireEvent.change(screen.getByRole('textbox', { name: /Artist/ }), { target: { value: 'x' } })
+    fireEvent.click(addButton())
+    expect(await screen.findByText('An album needs its artist')).toBeTruthy()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+})

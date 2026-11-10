@@ -3,6 +3,7 @@ package runhost
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -27,6 +28,9 @@ type fakeEngine struct {
 	resumed     int
 	paused      int
 	removed     []int
+	videos      map[int]string
+	swapped     map[int]string
+	swappable   bool
 }
 
 func newFakeEngine(urls ...string) *fakeEngine {
@@ -79,8 +83,25 @@ func (f *fakeEngine) RemoveSource(playlist int) bool {
 
 	return true
 }
-func (f *fakeEngine) Release(entry int, _ string) bool {
+func (f *fakeEngine) Swap(entry int, videoID string) bool {
 	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !f.swappable {
+		return false
+	}
+	if f.swapped == nil {
+		f.swapped = map[int]string{}
+	}
+	f.swapped[entry] = videoID
+
+	return true
+}
+func (f *fakeEngine) Release(entry int, video string) bool {
+	f.mu.Lock()
+	if f.videos == nil {
+		f.videos = map[int]string{}
+	}
+	f.videos[entry] = video
 	f.released = append(f.released, entry)
 	f.mu.Unlock()
 	f.send(engine.EvEntryState{Entry: entry, State: engine.StateAccepted})
@@ -381,5 +402,70 @@ func TestAFailedSongTellsTheFailureCallback(t *testing.T) {
 	case <-failures:
 	case <-time.After(2 * time.Second):
 		t.Fatal("the failure was not reported")
+	}
+}
+
+func TestAMusicSearchNeedsAnArtistAndGoesInAsOneSource(t *testing.T) {
+	session, store, _, _ := newSession(t)
+	if err := session.AddSearch("", "Album", ""); err == nil {
+		t.Fatal("an album with no artist must be refused")
+	}
+	if err := session.AddSearch("Daft Punk", "Discovery", ""); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "the search as a source", func() bool {
+		sources := store.State().Sources
+
+		return len(sources) == 1 && strings.HasPrefix(sources[0].URL, "mvdsearch:")
+	})
+}
+
+func TestAVideoReplacingAnotherIsGivenToAWaitingSongWhenItIsReleased(t *testing.T) {
+	session, store, fake, _ := newSession(t)
+	_ = session.AddSource("https://example.com/list")
+	fake.events <- listed(0, "My list", 0)
+	fake.events <- engine.EvEntryState{Entry: 0, State: engine.StatePlanned, TargetID: "x"}
+	eventually(t, "the planned song", func() bool { return len(store.State().Songs) == 1 && store.State().Songs[0].Status != "waiting" })
+	if err := session.ReplaceVideo("e0", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"); err != nil {
+		t.Fatal(err)
+	}
+	if err := session.Start(); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "the chosen video released", func() bool {
+		fake.mu.Lock()
+		defer fake.mu.Unlock()
+
+		return fake.videos[0] == "dQw4w9WgXcQ"
+	})
+}
+
+func TestAVideoReplacingAnotherIsRefusedWhenItIsNotAVideoOrTheSongCannotTakeIt(t *testing.T) {
+	session, _, fake, _ := newSession(t)
+	_ = session.AddSource("https://example.com/list")
+	fake.events <- listed(0, "My list", 0)
+	eventually(t, "the song", func() bool {
+		return session.ReplaceVideo("e0", "not a link") != nil && session.ReplaceVideo("e0", "dQw4w9WgXcQ") != nil
+	})
+	if err := session.ReplaceVideo("e0", "not a link"); err == nil || !strings.Contains(err.Error(), "YouTube video") {
+		t.Fatalf("a text that is no video says what to write: %v", err)
+	}
+	if err := session.ReplaceVideo("e7", "dQw4w9WgXcQ"); err == nil {
+		t.Fatal("a song that is not in the list must be refused")
+	}
+}
+
+func TestAVideoReplacingAnotherGoesToTheEngineForASongThatIsDone(t *testing.T) {
+	session, store, fake, _ := newSession(t)
+	fake.swappable = true
+	_ = session.AddSource("https://example.com/list")
+	fake.events <- listed(0, "My list", 0)
+	fake.events <- engine.EvEntryState{Entry: 0, State: engine.StateDone}
+	eventually(t, "the finished song", func() bool { return len(store.State().Songs) == 1 && store.State().Songs[0].Status == "saved" })
+	if err := session.ReplaceVideo("e0", "dQw4w9WgXcQ"); err != nil {
+		t.Fatal(err)
+	}
+	if fake.swapped[0] != "dQw4w9WgXcQ" {
+		t.Fatalf("the engine was given %v", fake.swapped)
 	}
 }

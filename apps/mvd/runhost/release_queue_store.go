@@ -11,6 +11,38 @@ type releaseQueue struct {
 	mu      sync.Mutex
 	entries []int
 	every   bool
+	// chosen is the video the person picked for a song that is still held.
+	chosen map[int]string
+}
+
+// choose keeps the video the person picked for a held song, to give it when the song is released.
+func (q *releaseQueue) choose(entry int, video string) {
+	q.mu.Lock()
+	if q.chosen == nil {
+		q.chosen = map[int]string{}
+	}
+	q.chosen[entry] = video
+	q.mu.Unlock()
+}
+
+// videoFor returns the video picked for a song, "" for none, and forgets it.
+func (q *releaseQueue) videoFor(entry int) string {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	video := q.chosen[entry]
+	delete(q.chosen, entry)
+
+	return video
+}
+
+// chosenAll returns every pick not given yet and forgets them.
+func (q *releaseQueue) chosenAll() map[int]string {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	picks := q.chosen
+	q.chosen = nil
+
+	return picks
 }
 
 // add queues one song.
@@ -57,10 +89,13 @@ func (s *Session) releaser(ctx context.Context, eng Engine) {
 		}
 		every, entries := s.release.take()
 		if every {
+			for entry, video := range s.release.chosenAll() {
+				eng.Release(entry, video)
+			}
 			eng.ReleaseAll()
 		}
 		for _, entry := range entries {
-			eng.Release(entry, "")
+			eng.Release(entry, s.release.videoFor(entry))
 		}
 	}
 }
