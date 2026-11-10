@@ -38,6 +38,8 @@ type Entry struct {
 	NamedAlbum string
 	// Height and AudioKbps are how good the version being downloaded is, 0 until it is known.
 	Height, AudioKbps int
+	// Audio is where the best audio step is (the words of engine.EvAudio), "" when the song has none.
+	Audio string
 	Err                     string
 	Percent                 float64
 	Downloaded int64
@@ -158,7 +160,7 @@ func (s *State) Apply(ev interface{}) int {
 		en.Err = e.Err
 		if e.State == engine.StateQueued {
 			en.Percent, en.Downloaded, en.Total, en.Speed, en.ETA = 0, 0, 0, 0, -1
-			en.Height, en.AudioKbps = 0, 0
+			en.Height, en.AudioKbps, en.Audio = 0, 0, ""
 		}
 		if e.State == engine.StateDone {
 			en.Percent = 100
@@ -178,6 +180,13 @@ func (s *State) Apply(ev interface{}) int {
 			return -1
 		}
 		en.Height, en.AudioKbps = e.Height, e.AudioKbps
+		return e.Entry
+	case engine.EvAudio:
+		en := s.Entry(e.Entry)
+		if en == nil {
+			return -1
+		}
+		en.Audio = e.Word
 		return e.Entry
 	case engine.EvProgress:
 		en := s.Entry(e.Entry)

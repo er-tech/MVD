@@ -806,6 +806,13 @@ func (e *Engine) process(ctx context.Context, id int) {
 		return
 	}
 
+	e.mu.Lock()
+	wantsAudio := e.opts.AfterDownload != nil && en.official
+	e.mu.Unlock()
+	if wantsAudio {
+		e.emit(EvAudio{Entry: eid, Word: AudioWaiting})
+	}
+
 	immediateUsed := false
 	for {
 		err := e.throttledDownload(ctx, en)
@@ -1001,8 +1008,14 @@ func (e *Engine) download(ctx context.Context, en *engineEntry) error {
 		e.mu.Unlock()
 		if e.opts.AfterDownload != nil && official && len(files) > 0 {
 			logf := func(format string, args ...any) { e.log(pl, eid, format, args...) }
+			e.emit(EvAudio{Entry: eid, Word: AudioFetching})
 			if afterErr := e.opts.AfterDownload(ctx, target, files, logf); afterErr != nil {
-				e.log(pl, eid, "[better audio] %v", afterErr)
+				if !errors.Is(afterErr, ErrBestAudioSkipped) {
+					e.log(pl, eid, "[better audio] %v", afterErr)
+				}
+				e.emit(EvAudio{Entry: eid, Word: AudioFailed})
+			} else {
+				e.emit(EvAudio{Entry: eid, Word: AudioDone})
 			}
 		}
 	}

@@ -16,6 +16,7 @@ const song = (id: string, sourceId: string): Song => ({
   version:   '',
   height:    0,
   audioKbps: 0,
+  audio:     '',
   error:     '',
 })
 

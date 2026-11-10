@@ -17,6 +17,7 @@ const song = (percent = 0): Song => ({
   version:   '',
   height:    0,
   audioKbps: 0,
+  audio:     '',
   error:     '',
 })
 const state = (revision: number, percent = 0): State => ({

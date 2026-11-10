@@ -90,6 +90,7 @@ func songRow(en *runstate.Entry) library.Song {
 		Version:   versionOf(en),
 		Height:    en.Height,
 		AudioKbps: en.AudioKbps,
+		Audio:     en.Audio,
 		Error:     runstate.PlainError(en.Err),
 	}
 }

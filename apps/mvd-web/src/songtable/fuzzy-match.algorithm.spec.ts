@@ -15,6 +15,7 @@ const song: Song = {
   version:   'official',
   height:    0,
   audioKbps: 0,
+  audio:     '',
   error:     '',
 }
 

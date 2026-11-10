@@ -13,6 +13,7 @@ export const songColumns: ColumnDef<SongLine>[] = [
   { id: 'title', accessorKey: 'title', header: 'Title', size: 320, minSize: 60 },
   { id: 'status', accessorKey: 'status', header: 'Status', size: 190, minSize: 60, filterFn: 'arrIncludesSome' },
   { id: 'version', accessorKey: 'version', header: 'Version', size: 130, minSize: 60, filterFn: 'arrIncludesSome' },
+  { id: 'audio', accessorKey: 'audio', header: 'Best audio', size: 130, minSize: 60, filterFn: 'arrIncludesSome' },
   {
     id:         'progress',
     accessorFn: song => progressOf(song),
@@ -25,7 +26,7 @@ export const songColumns: ColumnDef<SongLine>[] = [
 ]
 
 /** The columns that have a filter in their header. */
-export const filterColumnIds: readonly string[] = ['status', 'version', 'progress']
+export const filterColumnIds: readonly string[] = ['status', 'version', 'audio', 'progress']
 
 /** The space left of the first column, in pixels. */
 export const rowPadding = 12

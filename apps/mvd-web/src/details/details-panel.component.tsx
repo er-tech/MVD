@@ -1,7 +1,7 @@
 import { Box, Button, Heading, HStack, Stack, Text } from '@chakra-ui/react'
 import type { Backend } from '../backend'
 import type { LibraryStore } from '../library'
-import { ProgressTag, QualityTag, StatusTag, VersionTag } from '../songtags'
+import { AudioTag, ProgressTag, QualityTag, StatusTag, VersionTag } from '../songtags'
 import type { Selection } from './selection.contract.ts'
 import { LogList } from './log-list.component.tsx'
 import { useDetail } from './use-detail.hook.ts'
@@ -60,6 +60,7 @@ export function DetailsPanel ({ backend, store, selection }: DetailsPanelProps) 
         <HStack wrap='wrap' gap='2' data-testid='song-tags'>
           <StatusTag song={song} />
           <VersionTag song={song} />
+          <AudioTag song={song} />
           <ProgressTag song={song} />
           <QualityTag song={song} />
         </HStack>

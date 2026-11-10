@@ -9,7 +9,7 @@ import { ContextMenu } from '../contextmenu'
 import type { MenuEntry } from '../contextmenu'
 import type { Song, Source, Table } from '../library'
 import { songMatches } from './fuzzy-match.algorithm.ts'
-import { progressLabels, versionLook } from '../songtags'
+import { audioLook, progressLabels, versionLook } from '../songtags'
 import { ColumnFilter } from './column-filter.component.tsx'
 import type { FilterOption } from './column-filter.component.tsx'
 import { filterColumnIds, rowPadding, songColumns } from './song-columns.config.ts'
@@ -38,7 +38,13 @@ function optionsOf (column: Column<SongLine>): FilterOption[] {
     return Object.entries(progressLabels).filter(([value]) => values.includes(value)).map(([value, label]) => ({ value, label }))
   }
 
-  const named = (value: string) => column.id === 'version' ? (versionLook(value)?.label ?? 'Not known yet') : value
+  const named = (value: string) => {
+    switch (column.id) {
+      case 'version': { return versionLook(value)?.label ?? 'Not known yet' }
+      case 'audio': { return audioLook(value)?.label ?? 'None' }
+      default: { return value }
+    }
+  }
 
   return values.map(value => ({ value, label: named(value) }))
 }
