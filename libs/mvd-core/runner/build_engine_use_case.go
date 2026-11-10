@@ -132,8 +132,15 @@ func build(ctx context.Context, ytDlpPath string, cfg config.Config, urls []stri
 	if appDir, err := appdir.Dir(); err == nil {
 		cacheFile = filepath.Join(appDir, "official-videos.json")
 	}
+	probes := newVideoProbes(ctx, ytDlpPath, extraArgs)
+	opts.ProbeQuality = func(videoID string) (int, int, error) {
+		probe, err := probes.of(videoID)
+
+		return probe.Quality.Height, probe.Quality.AudioKbps, err
+	}
 	resolver, searcher := BuildResolver(ctx, ResolverInput{
 		YtDlp: ytDlpPath, ExtraArgs: extraArgs, CookiesFile: cfg.CookiesFile, CookiesActive: cookiesActive, CacheFile: cacheFile,
+		Probes: probes,
 	}, log)
 	// The resolver is always given, and switched on or off by the settings, which can change
 	// while the run goes on.

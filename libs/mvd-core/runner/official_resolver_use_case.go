@@ -27,6 +27,9 @@ type ResolverInput struct {
 	// only chooses among uploads when none is official: a check that only wants to know
 	// whether the official video is still found has no use for it.
 	SkipQuality bool
+	// Probes, when set, is the store of what yt-dlp says of each video that the resolver reads from, so the
+	// engine can share the answers; otherwise the resolver has its own.
+	Probes *videoProbes
 }
 
 // BuildResolver wires the official video lookup against the real sites, the way the app
@@ -73,7 +76,10 @@ func BuildResolver(ctx context.Context, in ResolverInput, log func(string, ...in
 	}
 	if !in.SkipQuality {
 		// What yt-dlp says of an upload (the formats and the storyboard) is asked once.
-		probes := newVideoProbes(ctx, in.YtDlp, in.ExtraArgs)
+		probes := in.Probes
+		if probes == nil {
+			probes = newVideoProbes(ctx, in.YtDlp, in.ExtraArgs)
+		}
 		// The formats of the uploads of a song tell which has the best picture and sound.
 		resolver.Sources.Quality = func(videoID string) (trackpick.Quality, error) {
 			probe, err := probes.of(videoID)

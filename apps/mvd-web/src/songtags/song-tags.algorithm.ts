@@ -69,10 +69,16 @@ export function qualityOf (song: Pick<Song, 'height' | 'audioKbps'>): string {
   return [song.height > 0 ? `${String(song.height)}p` : '', song.audioKbps > 0 ? `${String(song.audioKbps)} kbps` : ''].filter(Boolean).join(' · ')
 }
 
-/** The words and colour of the best audio step of a song, or `undefined` when the song has none. */
-export function audioLook (audio: string): { label: string, palette: string } | undefined {
+/**
+ * The words and colour of the best audio step of a song, or `undefined` when the song has none.
+ *
+ * @param audio - where the step is.
+ * @param kbps - the best audio rate found for the song, 0 when not known: the `ready` step shows it.
+ */
+export function audioLook (audio: string, kbps = 0): { label: string, palette: string } | undefined {
   switch (audio) {
     case 'waiting': { return { label: 'Waiting', palette: 'gray' } }
+    case 'ready': { return { label: kbps > 0 ? `${String(kbps)} kbps` : 'Ready', palette: 'cyan' } }
     case 'fetching': { return { label: 'Fetching', palette: 'blue' } }
     case 'done': { return { label: 'On the video', palette: 'green' } }
     case 'not done': { return { label: 'Not done', palette: 'yellow' } }
