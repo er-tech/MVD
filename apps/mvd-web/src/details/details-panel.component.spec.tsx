@@ -126,4 +126,20 @@ describe('DetailsPanel', () => {
     await settle()
     expect(screen.getByText('that item is not in the list')).toBeTruthy()
   })
+
+  it('gives a song a Replace video button that names the song', async () => {
+    const onReplace = vi.fn<(id: string) => void>()
+    const backend = fakeBackend()
+    backend.answers.detail = detail
+    const store = new LibraryStore()
+    store.songs.apply({ upserts: [song()], removed: [] })
+    render(
+      <ChakraProvider value={defaultSystem}>
+        <DetailsPanel backend={backend} store={store} selection={{ kind: 'song', id: 'e0' }} onReplace={onReplace} />
+      </ChakraProvider>,
+    )
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Replace video…' }))
+    expect(onReplace).toHaveBeenCalledWith('e0')
+  })
 })

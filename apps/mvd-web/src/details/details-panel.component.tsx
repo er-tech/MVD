@@ -10,6 +10,8 @@ interface DetailsPanelProps {
   backend:    Backend
   store:      LibraryStore
   selection?: Selection
+  /** Opens the window that gives the selected song another video. */
+  onReplace?: (id: string) => void
 }
 
 /** The words of a song that is being worked on, so the last line of its log is a step that goes on. */
@@ -29,8 +31,9 @@ const logLines = 40
  * @param props.backend - the Go side, for the details and to open a link.
  * @param props.store - the library, to follow the selected row as it changes.
  * @param props.selection - the chosen item, `undefined` for none.
+ * @param props.onReplace - called with the ID of the song when its Replace video button is pressed.
  */
-export function DetailsPanel ({ backend, store, selection }: DetailsPanelProps) {
+export function DetailsPanel ({ backend, store, selection, onReplace }: DetailsPanelProps) {
   const { detail, error } = useDetail(backend, store, selection)
 
   const song = selection?.kind === 'song' ? store.songs.getRow(selection.id) : undefined
@@ -79,7 +82,7 @@ export function DetailsPanel ({ backend, store, selection }: DetailsPanelProps) 
           </Box>
         ))}
       </Stack>
-      {detail.links.length > 0 && (
+      {(detail.links.length > 0 || (song !== undefined && onReplace !== undefined)) && (
         <Stack gap='2'>
           {detail.links.map(link => (
             <Button
@@ -94,6 +97,18 @@ export function DetailsPanel ({ backend, store, selection }: DetailsPanelProps) 
               {link.label}
             </Button>
           ))}
+          {song !== undefined && selection.kind === 'song' && onReplace !== undefined && (
+            <Button
+              size='sm'
+              variant='outline'
+              justifyContent='flex-start'
+              onClick={() => {
+                onReplace(selection.id)
+              }}
+            >
+              Replace video…
+            </Button>
+          )}
         </Stack>
       )}
       {detail.log.length > 0 && (
