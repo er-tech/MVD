@@ -138,6 +138,10 @@ export function App ({ backend }: { backend: Backend }) {
     }
   }, [backend])
 
+  const replaceVideo = useCallback((id: string) => {
+    setReplacing(id)
+    setModal('replace')
+  }, [])
   const itemDeps = useMemo<ItemActionDeps>(() => ({
     backend,
     store,
@@ -145,11 +149,8 @@ export function App ({ backend }: { backend: Backend }) {
     remove: id => {
       void removeSource(id)
     },
-    replace: id => {
-      setReplacing(id)
-      setModal('replace')
-    },
-  }), [backend, store, removeSource])
+    replace: replaceVideo,
+  }), [backend, store, removeSource, replaceVideo])
   const copySelected = useCallback((chosen: Selection, pick: SongPick = 'official') => {
     void copyItem(itemDeps, chosen.kind, chosen.id, pick)
   }, [itemDeps])
@@ -220,7 +221,7 @@ export function App ({ backend }: { backend: Backend }) {
           </Splitter.ResizeTrigger>
           <Splitter.Panel id='details' minH='0' overflow='hidden'>
             <Flex direction='column' h='full' minH='0'>
-              <DetailsPanel backend={backend} store={store} selection={selection} />
+              <DetailsPanel backend={backend} store={store} selection={selection} onReplace={replaceVideo} />
             </Flex>
           </Splitter.Panel>
         </Splitter.Root>
