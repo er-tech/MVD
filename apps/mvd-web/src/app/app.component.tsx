@@ -2,7 +2,7 @@ import { Box, ChakraProvider, Flex, Splitter, Text, defaultSystem } from '@chakr
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { AboutModal } from '../about'
 import { AddSourceModal } from '../addsource'
-import type { Backend, ListInfo } from '../backend'
+import type { Backend, DetailLink, ListInfo } from '../backend'
 import { DetailsPanel } from '../details'
 import type { Selection } from '../details'
 import { copyItem, menuEntriesOf, openItem } from '../itemactions'
@@ -13,6 +13,7 @@ import { connectLibrary } from '../librarysync'
 import { MetricsBar, usePageMetrics } from '../metrics'
 import { PreferencesModal } from '../preferences'
 import { QuitQuestionModal } from '../quitquestion'
+import { VideoPlayerModal } from '../videoplayer'
 import { RecoveryModal } from '../recovery'
 import { ReplaceVideoModal } from '../replacevideo'
 import { ShortcutsModal } from '../shortcuts'
@@ -48,6 +49,7 @@ export function App ({ backend }: { backend: Backend }) {
   const [sourceId, setSourceId] = useState<string | undefined>()
   const [modal, setModal] = useState<ModalName | undefined>()
   const [notice, setNotice] = useState('')
+  const [playing, setPlaying] = useState<DetailLink | undefined>()
   const [replacing, setReplacing] = useState<string | undefined>()
   const [recovery, setRecovery] = useState<ListInfo | undefined>()
 
@@ -142,6 +144,10 @@ export function App ({ backend }: { backend: Backend }) {
     setReplacing(id)
     setModal('replace')
   }, [])
+  const playVideo = useCallback((link: DetailLink) => {
+    setPlaying(link)
+    setModal('player')
+  }, [])
   const itemDeps = useMemo<ItemActionDeps>(() => ({
     backend,
     store,
@@ -221,7 +227,7 @@ export function App ({ backend }: { backend: Backend }) {
           </Splitter.ResizeTrigger>
           <Splitter.Panel id='details' minH='0' overflow='hidden'>
             <Flex direction='column' h='full' minH='0'>
-              <DetailsPanel backend={backend} store={store} selection={selection} onReplace={replaceVideo} />
+              <DetailsPanel backend={backend} store={store} selection={selection} onReplace={replaceVideo} onPlay={playVideo} />
             </Flex>
           </Splitter.Panel>
         </Splitter.Root>
@@ -235,6 +241,12 @@ export function App ({ backend }: { backend: Backend }) {
       </Flex>
       {hovering && <DropOverlay />}
       <AddSourceModal open={modal === 'add'} backend={backend} onClose={closeModal} />
+      <VideoPlayerModal
+        url={modal === 'player' ? playing?.url : undefined}
+        title={playing?.label ?? ''}
+        onOpenExternal={url => { void backend.openLink(url) }}
+        onClose={closeModal}
+      />
       <ReplaceVideoModal
         songId={modal === 'replace' ? replacing : undefined}
         name={replacing === undefined ? '' : songName(store.songs.getRow(replacing))}

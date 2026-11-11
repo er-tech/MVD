@@ -4,7 +4,7 @@ import type { Run } from '../library'
 import { shortcutList } from '../shortcuts'
 
 /** The windows the page can open. */
-export type ModalName = 'add' | 'preferences' | 'about' | 'shortcuts' | 'quit' | 'replace'
+export type ModalName = 'add' | 'preferences' | 'about' | 'shortcuts' | 'quit' | 'replace' | 'player'
 
 interface AppActions {
   backend:   Backend

@@ -1,6 +1,7 @@
 import { Box, Button, Heading, HStack, Stack, Text } from '@chakra-ui/react'
-import type { Backend } from '../backend'
+import type { Backend, DetailLink } from '../backend'
 import type { LibraryStore } from '../library'
+import { videoIdOf } from '../videoplayer'
 import { AudioTag, ProgressTag, QualityTag, StatusTag, VersionTag } from '../songtags'
 import type { Selection } from './selection.contract.ts'
 import { LogList } from './log-list.component.tsx'
@@ -12,6 +13,8 @@ interface DetailsPanelProps {
   selection?: Selection
   /** Opens the window that gives the selected song another video. */
   onReplace?: (id: string) => void
+  /** Plays a video inside the app. Without it, or for an address that is not a video, the link opens in the browser. */
+  onPlay?:    (link: DetailLink) => void
 }
 
 /** The words of a song that is being worked on, so the last line of its log is a step that goes on. */
@@ -31,9 +34,10 @@ const logLines = 40
  * @param props.backend - the Go side, for the details and to open a link.
  * @param props.store - the library, to follow the selected row as it changes.
  * @param props.selection - the chosen item, `undefined` for none.
+ * @param props.onPlay - called with the link of a video when its button is pressed.
  * @param props.onReplace - called with the ID of the song when its Replace video button is pressed.
  */
-export function DetailsPanel ({ backend, store, selection, onReplace }: DetailsPanelProps) {
+export function DetailsPanel ({ backend, store, selection, onReplace, onPlay }: DetailsPanelProps) {
   const { detail, error } = useDetail(backend, store, selection)
 
   const song = selection?.kind === 'song' ? store.songs.getRow(selection.id) : undefined
@@ -91,6 +95,11 @@ export function DetailsPanel ({ backend, store, selection, onReplace }: DetailsP
               variant='outline'
               justifyContent='flex-start'
               onClick={() => {
+                if (onPlay !== undefined && videoIdOf(link.url) !== undefined) {
+                  onPlay(link)
+
+                  return
+                }
                 void backend.openLink(link.url)
               }}
             >
